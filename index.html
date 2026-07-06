@@ -93,7 +93,7 @@
         .expected { color: #ffd33d; font-weight: 700; font-size: 2.2em; font-family: monospace; line-height: 1; }
         .highlight { color: #56d364; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; }
         
-        /* ⭐ここを修正！ 47桁が絶対に「...」で隠れず、綺麗に2行に折り返して全表示される設定 */
+        /* 47桁が絶対に「...」で隠れず、綺麗に2行に折り返して全表示される設定 */
         .highlight-uni { 
             color: #79c0ff; 
             font-weight: 700; 
@@ -221,7 +221,7 @@
         let fixedUniqueKey = null;
         let scannedSeqHistory = new Set();
         let currentDragMode = 'seq'; 
-        let appState = 'SETUP'; 
+        let appState = 'SETUP'; // ⚙️立ち上げ時は必ず「設定モード」からスタートさせる
 
         // トレース復元処理
         window.addEventListener('load', () => {
@@ -236,6 +236,8 @@
             if (localStorage.getItem('orderDir')) {
                 orderDirSelect.value = localStorage.getItem('orderDir');
             }
+            // ⚙️iPhoneの古い記憶による自動スタート（RUNNING化）を完全にブロック
+            appState = 'SETUP'; 
         });
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } })
