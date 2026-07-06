@@ -24,15 +24,14 @@
       flex-direction: column;
       height: 100%;
       box-sizing: border-box;
-      padding: 8px;
-      justify-content: space-between;
+      padding: 6px;
     }
 
+    /* ⭐画質を落とさないために、カメラエリアを画面の45%まで広げて確保 */
     .video-container {
       position: relative;
       width: 100%;
-      height: 35vh;
-      max-height: 35vh;
+      height: 45vh;
       background-color: #000;
       border: 3px solid #003A8C;
       border-radius: 12px;
@@ -60,39 +59,39 @@
       z-index: 10;
     }
 
+    /* ボタンのスキマを詰めてコンパクトに */
     .main-btn {
       width: 100%;
-      padding: 12px;
-      font-size: 16px;
+      padding: 10px;
+      margin: 6px 0;
+      font-size: 15px;
       font-weight: bold;
       background-color: #003A8C;
       color: white;
       border: none;
       border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
-    .main-btn:active { background-color: #002252; }
 
+    /* 情報ボックスを少しスリムにして、文字が下にはみ出さないようにガード */
     .card {
       background-color: #161b22;
       border: 1px solid #30363d;
       border-radius: 12px;
-      padding: 10px;
-      flex-grow: 1;
-      margin: 6px 0;
+      padding: 8px;
+      flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: space-around;
+      min-height: 0; 
     }
 
     .card-title {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: bold;
       color: #58a6ff;
       border-bottom: 1px solid #30363d;
-      padding-bottom: 4px;
-      margin-top: 0;
-      margin-bottom: 6px;
+      padding-bottom: 2px;
+      margin: 0;
       display: flex;
       justify-content: space-between;
     }
@@ -100,56 +99,56 @@
     .status-badge {
       background-color: #d29922;
       color: #0d1117;
-      padding: 2px 6px;
+      padding: 1px 6px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 10px;
     }
 
     .row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin: 4px 0;
-      font-size: 13px;
+      margin: 2px 0;
+      font-size: 12px;
     }
 
     .val-large {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
       color: #d29922;
     }
     .val-num {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
       color: #3fb950;
     }
 
     .val-key {
-      font-size: 14px;
+      font-size: 13px;
       font-family: monospace;
       color: #58a6ff;
       word-break: break-all;
       white-space: normal;
       text-align: right;
-      max-width: 60%;
+      max-width: 65%;
     }
 
     .msg-box {
       background-color: rgba(210, 153, 34, 0.1);
       border: 1px solid rgba(210, 153, 34, 0.3);
-      padding: 8px;
+      padding: 6px;
       border-radius: 6px;
       color: #d29922;
-      font-size: 12px;
+      font-size: 11px;
       text-align: center;
-      margin-top: 4px;
     }
 
     .settings-box {
       background-color: #161b22;
       border: 1px solid #30363d;
       border-radius: 12px;
-      padding: 8px;
+      padding: 6px;
+      margin-top: 6px;
     }
     .tab-container {
       display: flex;
@@ -157,8 +156,8 @@
     }
     .tab {
       flex: 1;
-      padding: 8px;
-      font-size: 13px;
+      padding: 6px;
+      font-size: 12px;
       font-weight: bold;
       background-color: #21262d;
       color: #c9d1d9;
@@ -247,7 +246,7 @@
 
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, // ⚙️最高画質に設定
           audio: false
         });
         video.srcObject = stream;
@@ -260,7 +259,6 @@
       }
     }
 
-    // 🔄 カメラの映像からリアルタイムでQRをスキャンする本番プログラム
     function tick() {
       if (video.readyState === video.HAVE_CURRENT_DATA) {
         canvas.height = video.videoHeight;
@@ -275,12 +273,9 @@
         if (code) {
           if (lastQR !== code.data) {
             lastQR = code.data;
-            playBeep(); // 読んだらピピッ！
-            
-            // 47桁の文字を表示
+            playBeep();
             document.getElementById('uniqueKey').innerText = code.data;
             
-            // 簡易的に末尾2桁を連番数値として抽出するロジック
             if (code.data.length >= 2) {
               const numPart = code.data.slice(-2);
               if (!isNaN(numPart)) {
