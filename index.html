@@ -41,13 +41,12 @@
         
         h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 2px 0; }
 
-        /* 📸 【ここを劇的に修正！】カメラの見た目の縦幅を「画面の高さの30%」に小さく強制ロック！ */
+        /* 📸 【ここを完全に強制固定！】見た目の高さを「200ピクセル」にガチッとロック！ */
         #canvas-container { 
             margin: 0 auto; 
             width: 100%; 
             max-width: 440px; 
-            height: 30vh; /* 縦幅を30%にして小さく収める */
-            max-height: 30vh;
+            height: 200px !important; /* 縦幅を200pxに強制固定して絶対にでかくさせない */
             position: relative; 
             cursor: pointer; 
             background-color: #000;
@@ -62,7 +61,7 @@
         canvas { 
             width: 100%; 
             height: 100%; 
-            object-fit: cover; /* 潰さずに枠の中に綺麗に切り取って表示 */
+            object-fit: cover !important; /* 枠の中にぴったり切り取って表示 */
         }
         .zoom-hint { position: absolute; bottom: 8px; right: 8px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; font-size: 0.7em; pointer-events: none; color: #8b949e; }
         
@@ -609,7 +608,7 @@
                 appState = 'RUNNING';
                 const dir = parseInt(orderDirSelect.value, 10);
                 expectedNumber = scannedNumber + dir;
-                expectedElement.innerText = expectedNumber;
+                expectedElement.innerText = TuneExpected(expectedNumber);
                 scannedSeqHistory.add(scannedNumber);
                 
                 modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
@@ -644,7 +643,16 @@
                 showMessage(`❌ 順NG：連番が違います。 (期待: ${expectedNumber})`, "#f85149");
                 playBeep('ng'); addLogEntry('NG', scannedNumber, uniKeyText, expectedNumber);
             }
-            expectedElement.innerText = expectedNumber !== null ? expectedNumber : "未登録";
+            expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : "未登録";
+        }
+
+        // ゼロパディング（桁揃え）を維持する補助関数
+        function TuneExpected(num) {
+            const lSeq = document.getElementById('seqLen').value;
+            if (lSeq !== "" && !isNaN(lSeq)) {
+                return String(num).padStart(parseInt(lSeq, 10), '0');
+            }
+            return num;
         }
 
         function showMessage(text, color) { messageElement.innerText = text; messageElement.style.color = color; }
