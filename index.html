@@ -7,157 +7,111 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
-        html, body { 
-            margin: 0; 
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* 1画面に収めるため全体のスクロールを禁止 */
-            background-color: #0d1117; 
+        body { 
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; 
-            color: #f0f6fc; 
-            -webkit-text-size-adjust: 100%;
-            box-sizing: border-box;
-        }
-
-        /* 画面全体を包むコンテナ（上下に綺麗に等間隔配置） */
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-            justify-content: space-between;
-            /* 初期状態（設定モード）の時は、画面全体にオレンジの太い警戒枠をつける */
-            border: 6px solid #f0a842;
-            transition: border-color 0.3s;
+            text-align: center; background-color: #0d1117; color: #f0f6fc; margin: 0; padding: 12px; 
+            overscroll-behavior-y: none; -webkit-text-size-adjust: 100%;
         }
         
-        /* 本番動作中になったら枠を「稼働中グリーン」に変化させる */
-        body.mode-running .app-container {
-            border-color: #238636 !important;
-        }
-        
-        h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 2px 0; }
+        h2 { font-size: 1.5em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 10px 0 15px; }
 
-        /* 📸 【ここを完全に強制固定！】見た目の高さを「200ピクセル」にガチッとロック！ */
-        #canvas-container { 
-            margin: 0 auto; 
-            width: 100%; 
-            max-width: 440px; 
-            height: 200px !important; /* 縦幅を200pxに強制固定して絶対にでかくさせない */
-            position: relative; 
-            cursor: pointer; 
-            background-color: #000;
-            border: 2px solid #30363d; 
-            border-radius: 8px; 
-            overflow: hidden;
-            box-sizing: border-box;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+        /* ライブカメラエリア */
+        #canvas-container { margin: 0 auto; width: 100%; max-width: 480px; position: relative; cursor: pointer; }
+        
+        /* 📸 【ここが修正の命！】カメラのフレームサイズを縦230pxに強制ロックし、画像と全く同じサイズに固定 */
         canvas { 
             width: 100%; 
-            height: 100%; 
-            object-fit: cover !important; /* 枠の中にぴったり切り取って表示 */
+            height: 230px !important; 
+            object-fit: cover !important; 
+            border: 2px solid #30363d; 
+            border-radius: 8px; 
+            background-color: #000; 
+            box-sizing: border-box; 
         }
-        .zoom-hint { position: absolute; bottom: 8px; right: 8px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; font-size: 0.7em; pointer-events: none; color: #8b949e; }
+        .zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; pointer-events: none; color: #8b949e; }
         
         /* ライトボタン */
         #torchButton {
             position: fixed; top: 12px; right: 12px; z-index: 100;
-            width: auto; padding: 8px 14px; font-size: 0.9em; font-weight: 600;
+            width: auto; padding: 10px 16px; font-size: 1em; font-weight: 600;
             background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
         .btn-torch-on { background-color: #ffc107 !important; color: #000 !important; border-color: #ffc107 !important; }
         
-        /* カメラ直下のアナウンス文字 */
-        #modeIndicator {
-            width: 100%; max-width: 440px; margin: 2px auto; padding: 4px; font-size: 0.9em; font-weight: 800;
-            background-color: rgba(240, 168, 66, 0.15); color: #f0a842; border: 1px solid #f0a842; border-radius: 6px;
-            box-sizing: border-box;
-        }
-        #modeIndicator.run-style {
-            background-color: rgba(35, 134, 54, 0.2) !important; color: #56d364 !important; border-color: #238636 !important;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; }
-        }
-
-        /* ボタン共通スタイル（1画面に収めるためさらにスリムに調整） */
+        /* ボタン共通スタイル */
         .btn-large {
-            display: block; width: 100%; max-width: 440px; margin: 2px auto;
-            padding: 10px; font-size: 1.05em; font-weight: 700; border: none; border-radius: 8px; 
+            display: block; width: 100%; max-width: 480px; margin: 12px auto 0;
+            padding: 16px; font-size: 1.25em; font-weight: 700; border: none; border-radius: 8px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent;
-            letter-spacing: 1px; box-sizing: border-box;
+            letter-spacing: 1px; transition: background-color 0.1s;
         }
+        /* 連番のみリセット（トッパンレッド） */
         .btn-reset-seq { background-color: #E60012; color: #ffffff; }
         .btn-reset-seq:active { background-color: #b8000e; }
+        
+        /* 設定確定（トッパンブルー） */
         .btn-lock { background-color: #003A8C; color: #ffffff; }
         .btn-lock:active { background-color: #002663; }
 
-        /* パネルエリア（1画面に無理なく収めるスリムデザイン） */
-        .box { width: 100%; max-width: 440px; margin: 2px auto; padding: 6px 12px; border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; text-align: left; box-sizing: border-box; }
-        .box-title { margin: 0 0 4px 0; font-size: 0.9em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 2px; letter-spacing: 0.5px; }
+        /* パネルエリア */
+        .box { margin-top: 15px; padding: 16px; border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; text-align: left; box-sizing: border-box; }
+        .box-title { margin: 0 0 12px 0; font-size: 1.1em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 8px; letter-spacing: 0.5px; }
         
         /* ステータス表示 */
-        .status-badge { float: right; padding: 1px 6px; border-radius: 4px; font-size: 0.75em; font-weight: 700; }
+        .status-badge { float: right; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 700; letter-spacing: 0; }
         .status-setup { background-color: #f0a842; color: #000; }
         .status-run { background-color: #238636; color: #fff; }
 
         /* モード切替タブスタイル */
-        .mode-selector { margin-bottom: 4px; display: flex; background: #0d1117; padding: 2px; border-radius: 6px; border: 1px solid #30363d; }
-        .radio-label { flex: 1; text-align: center; font-size: 0.8em; font-weight: 600; cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
+        .mode-selector { margin-bottom: 15px; display: flex; background: #0d1117; padding: 4px; border-radius: 6px; border: 1px solid #30363d; }
+        .radio-label { flex: 1; text-align: center; font-size: 1em; font-weight: 600; cursor: pointer; padding: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
         .radio-label input { display: none; }
         .radio-label.active-seq { background: #238636; color: #fff; }
         .radio-label.active-uni { background: #1f6feb; color: #fff; }
         
         /* なぞり文字ブロック */
         #char-container { 
-            display: flex; flex-wrap: wrap; gap: 4px; background: #0d1117; padding: 4px; 
-            border-radius: 6px; min-height: 32px; touch-action: none; -webkit-user-select: none; user-select: none; border: 1px solid #30363d;
+            display: flex; flex-wrap: wrap; gap: 6px; background: #0d1117; padding: 12px; 
+            border-radius: 6px; min-height: 50px; touch-action: none; -webkit-user-select: none; user-select: none; border: 1px solid #30363d;
         }
         .char-box {
             display: inline-flex; align-items: center; justify-content: center;
-            width: 22px; height: 30px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
-            font-size: 0.9em; font-weight: 700; color: #c9d1d9; cursor: pointer; font-family: monospace;
+            width: 34px; height: 46px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
+            font-size: 1.3em; font-weight: 700; color: #c9d1d9; cursor: pointer; font-family: monospace;
         }
         .char-box.selected-seq { background: #238636; color: #fff; border-color: #2ea043; }
         .char-box.selected-uni { background: #1f6feb; color: #fff; border-color: #388bfd; }
-        .empty-msg { color: #8b949e; font-size: 0.8em; margin: auto; }
+        .empty-msg { color: #8b949e; font-size: 0.95em; margin: auto; }
         
-        .setting-row { margin-top: 4px; font-size: 0.8em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
-        .setting-row select { padding: 2px; font-size: 0.9em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+        .setting-row { margin-top: 15px; font-size: 1em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
+        .setting-row select { padding: 10px; font-size: 1em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
         
         /* データ数値表示 */
-        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 2px 0; padding: 2px 0; border-bottom: 1px solid #21262d; }
+        .info-row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; padding: 6px 0; border-bottom: 1px solid #21262d; }
         .info-row:last-of-type { border-bottom: none; }
-        .info-label { font-size: 0.85em; color: #8b949e; white-space: nowrap; margin-right: 10px; }
+        .info-label { font-size: 1em; color: #8b949e; }
         
-        .expected { color: #ffd33d; font-weight: 700; font-size: 1.5em; font-family: monospace; line-height: 1; }
-        .highlight { color: #56d364; font-weight: 700; font-size: 1.3em; font-family: monospace; line-height: 1; }
+        .expected { color: #ffd33d; font-weight: 700; font-size: 2.2em; font-family: monospace; }
+        .highlight { color: #56d364; font-weight: 700; font-size: 1.8em; font-family: monospace; }
         
+        /* ❗47桁が「...」で途切れないように折り返しをキープする設定 */
         .highlight-uni { 
             color: #79c0ff; 
             font-weight: 700; 
-            font-size: 1.1em; 
+            font-size: 1.4em; 
             font-family: monospace; 
             word-break: break-all; 
             white-space: normal; 
             max-width: 65%; 
             text-align: right; 
-            line-height: 1.2;
         }
         
-        #message { font-size: 0.85em; font-weight: 600; margin-top: 2px; text-align: center; min-height: 1.1em; padding: 4px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.2; }
+        #message { font-size: 1.15em; font-weight: 600; margin-top: 15px; text-align: center; min-height: 1.5em; padding: 12px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.4; }
         
-        /* 履歴ログ（コンパクトに収める） */
-        #log-container { max-height: 60px; overflow-y: auto; background: #0d1117; border-radius: 6px; padding: 4px; margin-top: 2px; border: 1px solid #30363d; }
-        .log-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding: 2px 0; font-size: 0.75em; }
+        /* 履歴ログ */
+        #log-container { max-height: 180px; overflow-y: auto; background: #0d1117; border-radius: 6px; padding: 10px; margin-top: 10px; border: 1px solid #30363d; }
+        .log-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding: 8px 0; font-size: 0.95em; }
         .log-entry:last-child { border-bottom: none; }
         .log-time { color: #8b949e; font-family: monospace; }
         .log-ok { color: #56d364; font-weight: 700; }
@@ -167,16 +121,19 @@
         .log-first { color: #58a6ff; font-weight: 700; }
 
         /* 下部履歴ボタン */
-        .btn-group { display: flex; gap: 4px; margin-top: 2px; }
-        button.action-btn { flex: 1; padding: 6px; font-size: 0.85em; font-weight: 600; cursor: pointer; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
+        .btn-group { display: flex; gap: 12px; margin-top: 15px; }
+        button.action-btn { flex: 1; padding: 14px; font-size: 1.1em; font-weight: 600; cursor: pointer; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
+        button.action-btn:active { background-color: #30363d; }
+        .btn-success { background-color: #238636; color: #ffffff; border-color: #2ea043; }
+        .btn-success:active { background-color: #2ea043; }
         
         /* 全リセットボタン */
-        .btn-all-clear { background-color: #161b22; color: #f85149; margin-top: 4px; margin-bottom: 2px; padding: 6px; font-size: 0.85em; font-weight: 600; border: 1px dashed #f85149; }
+        .btn-all-clear { background-color: #161b22; color: #f85149; margin-top: 25px; border: 1px dashed #f85149; font-size: 1.1em; font-weight: 600; }
+        .btn-all-clear:active { background-color: #f85149; color: #ffffff; }
     </style>
 </head>
 <body>
 
-  <div class="app-container">
     <h2>QRコード連番チェッカー</h2>
     
     <button id="torchButton" onclick="toggleTorch()">ライト: OFF</button>
@@ -186,8 +143,6 @@
         <canvas id="canvas"></canvas>
         <div class="zoom-hint">タップで拡大</div>
     </div>
-
-    <div id="modeIndicator">🛑 抽出ルール設定中（検査は停止しています）</div>
 
     <button id="lockButton" class="btn-large btn-lock" onclick="lockSettings()">設定を確定して本番開始</button>
     <button id="resetSeqButton" class="btn-large btn-reset-seq" onclick="resetSeqOnly()" style="display:none;">連番のみリセット（ユニークキー維持）</button>
@@ -229,7 +184,7 @@
                     <option value="-1">降順 (-1)</option>
                 </select>
             </div>
-            <button onclick="clearSelection()" style="padding:2px 8px; font-size:0.8em; background-color: #21262d; color:#f85149; border:1px solid #30363d; border-radius:6px; cursor:pointer; font-weight:600;">設定クリア</button>
+            <button onclick="clearSelection()" style="padding:10px 14px; font-size:0.95em; background-color: #21262d; color:#f85149; border:1px solid #30363d; border-radius:6px; cursor:pointer; font-weight:600;">設定クリア</button>
         </div>
         <input type="hidden" id="seqStart"><input type="hidden" id="seqLen">
         <input type="hidden" id="uniStart"><input type="hidden" id="uniLen">
@@ -237,7 +192,7 @@
     
     <div class="box">
         <h3 class="box-title">履歴ログ</h3>
-        <div id="log-container"><div class="empty-msg" style="text-align: center; margin-top: 5px;">記録はありません</div></div>
+        <div id="log-container"><div class="empty-msg" style="text-align: center; margin-top: 10px;">記録はありません</div></div>
         <div class="btn-group">
             <button class="action-btn btn-success" onclick="downloadCSV()">CSVで保存</button>
             <button class="action-btn" onclick="clearLogs()">履歴消去</button>
@@ -245,7 +200,6 @@
     </div>
 
     <button id="allClearButton" class="btn-large btn-all-clear" onclick="allClear()">全てリセット（ロット終了・ルール再設定）</button>
-  </div>
 
     <script>
         const video = document.getElementById("video");
@@ -263,7 +217,6 @@
         const resetSeqButton = document.getElementById("resetSeqButton");
         const statusBadge = document.getElementById("statusBadge");
         const settingBox = document.getElementById("settingBox");
-        const modeIndicator = document.getElementById("modeIndicator");
 
         let expectedNumber = null, lastScannedText = null, lastScanTime = 0, isZoomed = false, scanLogs = [];
         let fixedUniqueKey = null;
@@ -284,10 +237,8 @@
             if (localStorage.getItem('orderDir')) {
                 orderDirSelect.value = localStorage.getItem('orderDir');
             }
-            document.body.classList.remove("mode-running");
-            modeIndicator.innerText = "🛑 抽出ルール設定中（検査は停止しています）";
-            modeIndicator.className = "";
-            appState = 'SETUP'; 
+            // 立ち上げ時は確実に設定モードにするための安全ガード
+            appState = 'SETUP';
         });
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } })
@@ -519,17 +470,13 @@
             
             const dir = parseInt(orderDirSelect.value, 10);
             expectedNumber = scannedNumber + dir;
-            expectedElement.innerText = expectedNumber;
+            expectedElement.innerText = TuneExpected(expectedNumber);
             scannedSeqHistory.add(scannedNumber);
 
             lockButton.style.display = 'none'; resetSeqButton.style.display = 'block'; settingBox.style.display = 'none'; 
             statusBadge.innerText = '本番動作中'; statusBadge.className = 'status-badge status-run';
 
-            document.body.classList.add("mode-running");
-            modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
-            modeIndicator.className = "run-style";
-
-            showMessage("確定登録完了：本番チェック中です。", "#56d364");
+            showMessage(`確定登録：ユニークキー「${fixedUniqueKey}」/ 次の連番「${TuneExpected(expectedNumber)}」`, "#56d364");
             playBeep('first');
             addLogEntry('FIRST', scannedNumber, fixedUniqueKey, null);
             lastScanTime = new Date().getTime(); 
@@ -543,7 +490,6 @@
             expectedElement.innerText = "連番待機中";
             
             appState = 'RUNNING_SEQ_WAIT'; 
-            modeIndicator.innerText = "🟡 基準連番の再スキャン待機中...";
             showMessage(`ユニークキー「${fixedUniqueKey}」を維持して連番をリセットしました。次の連番基準となるQRをかざしてください。`, "#58a6ff");
             playBeep('first');
         }
@@ -555,17 +501,20 @@
         }
 
         function renderLogUI() {
-            if (scanLogs.length === 0) { logContainer.innerHTML = '<div class="empty-msg" style="text-align: center; margin-top: 5px;">記録はありません</div>'; return; }
+            if (scanLogs.length === 0) { logContainer.innerHTML = '<div class="empty-msg" style="text-align: center; margin-top: 10px;">記録はありません</div>'; return; }
             logContainer.innerHTML = '';
             scanLogs.slice(-50).reverse().forEach(log => {
                 const div = document.createElement('div'); div.className = 'log-entry';
                 let statusHtml = '';
                 if (log.status === 'OK') statusHtml = '<span class="log-ok">OK</span>';
-                else if (log.status === 'NG') statusHtml = `<span class="log-ng">順NG (期待:${log.expected})</span>`;
+                else if (log.status === 'NG') statusHtml = `<span class="log-ng">順NG (期待:${TuneExpected(log.expected)})</span>`;
                 else if (log.status === 'WRONG_KEY') statusHtml = `<span class="log-wrong-key">ユニーク違い</span>`;
                 else if (log.status === 'DUP') statusHtml = '<span class="log-dup">重複NG</span>';
                 else if (log.status === 'FIRST') statusHtml = '<span class="log-first">基準登録</span>';
-                div.innerHTML = `<span class="log-time">${log.time}</span><span style="flex: 1; text-align: center; font-family: monospace;">#${log.extracted} [${log.uniKey}]</span>${statusHtml}`;
+                
+                // ログ内の番号表示も桁揃えを適用
+                const fmtExtracted = log.status !== 'FIRST' ? TuneExpected(log.extracted) : log.extracted;
+                div.innerHTML = `<span class="log-time">${log.time}</span><span style="flex: 1; text-align: center; font-family: monospace;">#${fmtExtracted} [${log.uniKey}]</span>${statusHtml}`;
                 logContainer.appendChild(div);
             });
         }
@@ -574,7 +523,7 @@
             if (scanLogs.length === 0) { alert("保存するデータがありません。"); return; }
             let csvContent = "\uFEFF時間,判定,抽出した連番,抽出したユニークキー,期待値\n";
             scanLogs.forEach(log => {
-                const expected = log.expected !== null ? log.expected : "-";
+                const expected = log.expected !== null ? TuneExpected(log.expected) : "-";
                 csvContent += `${log.time},${log.status},${log.extracted},"${log.uniKey}",${expected}\n`;
             });
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), url = URL.createObjectURL(blob), link = document.createElement("a");
@@ -611,10 +560,7 @@
                 expectedElement.innerText = TuneExpected(expectedNumber);
                 scannedSeqHistory.add(scannedNumber);
                 
-                modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
-                modeIndicator.className = "run-style";
-
-                showMessage("新連番登録：ユニーク一致＆正しい連番です。", "#56d364");
+                showMessage(`新連番登録：ユニーク「${fixedUniqueKey}」/ 連番「${TuneExpected(scannedNumber)}」`, "#56d364");
                 playBeep('first');
                 addLogEntry('FIRST', scannedNumber, uniKeyText, null);
                 return;
@@ -631,7 +577,7 @@
             }
 
             if (scannedSeqHistory.has(scannedNumber)) {
-                showMessage(`⚠️ 重複NG：この連番「${scannedNumber}」はスキャン済みです。`, "#ff9a46");
+                showMessage(`⚠️ 重複NG：この連番「${TuneExpected(scannedNumber)}」はスキャン済みです。`, "#ff9a46");
                 playBeep('ng'); addLogEntry('DUP', scannedNumber, uniKeyText, expectedNumber); return;
             }
 
@@ -640,7 +586,7 @@
                 scannedSeqHistory.add(scannedNumber); addLogEntry('OK', scannedNumber, uniKeyText, expectedNumber);
                 expectedNumber = scannedNumber + dir; playBeep('ok');
             } else {
-                showMessage(`❌ 順NG：連番が違います。 (期待: ${expectedNumber})`, "#f85149");
+                showMessage(`❌ 順NG：連番が違います。 (期待: ${TuneExpected(expectedNumber)})`, "#f85149");
                 playBeep('ng'); addLogEntry('NG', scannedNumber, uniKeyText, expectedNumber);
             }
             expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : "未登録";
@@ -649,7 +595,7 @@
         // ゼロパディング（桁揃え）を維持する補助関数
         function TuneExpected(num) {
             const lSeq = document.getElementById('seqLen').value;
-            if (lSeq !== "" && !isNaN(lSeq)) {
+            if (lSeq !== "" && !isNaN(lSeq) && num !== null) {
                 return String(num).padStart(parseInt(lSeq, 10), '0');
             }
             return num;
@@ -665,10 +611,6 @@
             lockButton.style.display = 'block'; resetSeqButton.style.display = 'none'; settingBox.style.display = 'block';
             statusBadge.innerText = '抽出ルール設定中'; statusBadge.className = 'status-badge status-setup';
             
-            document.body.classList.remove("mode-running");
-            modeIndicator.innerText = "🛑 抽出ルール設定中（検査は停止しています）";
-            modeIndicator.className = "";
-
             showMessage("最初のQR（基準）を映して、連番とユニークキーの位置を設定してください。", "#f0f6fc");
             playBeep('first');
         }
@@ -676,7 +618,7 @@
         function allClear() {
             if (confirm("固定ユニークキーを含め、すべての状態を初期化します。よろしいですか？")) {
                 resetChecker();
-                showMessage("完全にリセットしました。Nextロットを設定してください。", "#f0f6fc");
+                showMessage("完全にリセットしました。次の新しいロットを設定してください。", "#f0f6fc");
             }
         }
     </script>
