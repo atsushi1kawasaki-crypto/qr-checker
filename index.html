@@ -6,7 +6,6 @@
   <title>QRコード連番＆ユニークキーチェッカー</title>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <style>
-    /* iPhoneのバウンド・横ブレを完全にロックし、1画面に収める */
     html, body {
       position: fixed;
       overflow: hidden;
@@ -20,7 +19,6 @@
       color: #f0f6fc;
     }
 
-    /* 全体を縦並びにして画面内に均等配置 */
     .container {
       display: flex;
       flex-direction: column;
@@ -30,14 +28,13 @@
       justify-content: space-between;
     }
 
-    /* カメラエリア：画面全体の高さを圧迫しないよう「最大35%」に制限 */
     .video-container {
       position: relative;
       width: 100%;
       height: 35vh;
       max-height: 35vh;
       background-color: #000;
-      border: 3px solid #003A8C; /* TOPPANブルー */
+      border: 3px solid #003A8C;
       border-radius: 12px;
       overflow: hidden;
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
@@ -49,7 +46,6 @@
       object-fit: cover;
     }
 
-    /* ライトボタンをカメラの右上に配置 */
     .torch-btn {
       position: absolute;
       top: 8px;
@@ -64,13 +60,12 @@
       z-index: 10;
     }
 
-    /* 確定ボタン */
     .main-btn {
       width: 100%;
       padding: 12px;
       font-size: 16px;
       font-weight: bold;
-      background-color: #003A8C; /* TOPPANブルー */
+      background-color: #003A8C;
       color: white;
       border: none;
       border-radius: 8px;
@@ -78,7 +73,6 @@
     }
     .main-btn:active { background-color: #002252; }
 
-    /* 情報表示ボックス */
     .card {
       background-color: #161b22;
       border: 1px solid #30363d;
@@ -130,7 +124,6 @@
       color: #3fb950;
     }
 
-    /* ⭐ここが最重要！47桁の文字を絶対に省略せず、きれいに折り返して全表示 */
     .val-key {
       font-size: 14px;
       font-family: monospace;
@@ -152,7 +145,6 @@
       margin-top: 4px;
     }
 
-    /* 下部設定エリア */
     .settings-box {
       background-color: #161b22;
       border: 1px solid #30363d;
@@ -174,7 +166,7 @@
       border-radius: 6px;
     }
     .tab.active {
-      background-color: #238636; /* TOPPANグリーン */
+      background-color: #238636;
       color: white;
       border: none;
     }
@@ -186,6 +178,7 @@
     <div class="video-container">
       <button class="torch-btn" id="torchBtn" onclick="toggleTorch()">ライト: OFF</button>
       <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas" style="display:none;"></canvas>
     </div>
 
     <button class="main-btn" onclick="confirmSettings()">設定を確定して本番開始</button>
@@ -193,21 +186,21 @@
     <div class="card">
       <div class="card-title">
         <span>読み取り状況</span>
-        <span class="status-badge">抽出ルール設定中</span>
+        <span class="status-badge" id="statusBadge">抽出ルール設定中</span>
       </div>
       <div class="row">
         <span>次に来る番号:</span>
-        <span class="val-large">未登録</span>
+        <span class="val-large" id="nextNum">未登録</span>
       </div>
       <div class="row">
         <span>読んだ連番数値:</span>
-        <span class="val-num" id="scannedNum">06</span>
+        <span class="val-num" id="scannedNum">-</span>
       </div>
       <div class="row" style="align-items: flex-start;">
         <span>固定ユニークキー:</span>
-        <span class="val-key" id="uniqueKey">E290760606A66A47LONGUNIQUEKEYSAMPLE1234567890123</span>
+        <span class="val-key" id="uniqueKey">QRをかざしてください</span>
       </div>
-      <div class="msg-box">
+      <div class="msg-box" id="msgBox">
         【設定受付中】位置を決定したら、<br>上の確定ボタンを押してください。
       </div>
     </div>
@@ -224,14 +217,18 @@
     let stream = null;
     let track = null;
     let isTorchOn = false;
+    let video = null;
+    let canvas = null;
+    let ctx = null;
+    let lastQR = "";
 
-    // 音声を鳴らす関数（画面を一度タップすると有効化されます）
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playBeep() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(2000, audioCtx.currentTime); // ピピッという高音
+      osc.frequency.setValueAtTime(2000, audioCtx.currentTime);
       gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
@@ -239,36 +236,70 @@
       osc.stop(audioCtx.currentTime + 0.1);
     }
 
-    // 初回タップ時に音声を有効化
     document.getElementById('mainContainer').addEventListener('click', () => {
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
     });
 
-    // カメラ起動
     async function startCamera() {
+      video = document.getElementById('video');
+      canvas = document.getElementById('canvas');
+      ctx = canvas.getContext('2d', { willReadFrequently: true });
+
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false
         });
-        const video = document.getElementById('video');
         video.srcObject = stream;
         track = stream.getVideoTracks()[0];
+        video.addEventListener('loadedmetadata', () => {
+          requestAnimationFrame(tick);
+        });
       } catch (err) {
         console.error("カメラ起動エラー:", err);
       }
     }
 
-    // ライトのON/OFF切り替え
+    // 🔄 カメラの映像からリアルタイムでQRをスキャンする本番プログラム
+    function tick() {
+      if (video.readyState === video.HAVE_CURRENT_DATA) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        });
+
+        if (code) {
+          if (lastQR !== code.data) {
+            lastQR = code.data;
+            playBeep(); // 読んだらピピッ！
+            
+            // 47桁の文字を表示
+            document.getElementById('uniqueKey').innerText = code.data;
+            
+            // 簡易的に末尾2桁を連番数値として抽出するロジック
+            if (code.data.length >= 2) {
+              const numPart = code.data.slice(-2);
+              if (!isNaN(numPart)) {
+                document.getElementById('scannedNum').innerText = numPart;
+              } else {
+                document.getElementById('scannedNum').innerText = "--";
+              }
+            }
+          }
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
     async function toggleTorch() {
       if (!track) return;
       try {
         isTorchOn = !isTorchOn;
-        await track.applyConstraints({
-          advanced: [{ torch: isTorchOn }]
-        });
+        await track.applyConstraints({ advanced: [{ torch: isTorchOn }] });
         document.getElementById('torchBtn').innerText = isTorchOn ? "ライト: ON" : "ライト: OFF";
       } catch (err) {
         alert("この端末はライト制御に対応していません");
@@ -276,7 +307,10 @@
     }
 
     function confirmSettings() {
-      playBeep(); // テスト確認用
+      playBeep();
+      document.getElementById('statusBadge').innerText = "本番チェック中";
+      document.getElementById('statusBadge').style.backgroundColor = "#238636";
+      document.getElementById('msgBox').innerText = "【本番稼働中】連番チェックを行っています。";
       alert("設定を確定しました！本番チェックを開始します。");
     }
 
