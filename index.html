@@ -29,14 +29,14 @@
         body.mode-running .app-container { border-color: #238636 !important; }
         body.mode-error .app-container { border-color: transparent !important; }
 
-        /* 👑 ヘッダー部分とバーガーボタン */
+        /* ヘッダー部分とバーガーボタン */
         .header-area {
             display: flex; justify-content: space-between; align-items: center; 
             width: 100%; max-width: 480px; margin: 0 auto 4px auto; padding: 0 4px; box-sizing: border-box;
         }
         h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 0; }
         
-        /* 🍔 バーガーボタン */
+        /* バーガーボタン */
         .menu-trigger {
             background: none; border: none; color: #58a6ff; font-size: 1.8em; cursor: pointer; padding: 0 6px; line-height: 1;
         }
@@ -53,7 +53,7 @@
         
         /* ライトボタン */
         #torchButton {
-            position: fixed; top: 12px; right: 50px; z-index: 100; /* メニューと被らない位置 */
+            position: fixed; top: 12px; right: 50px; z-index: 100;
             width: auto; padding: 6px 12px; font-size: 0.85em; font-weight: 600;
             background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px;
         }
@@ -80,17 +80,21 @@
             padding: 12px; font-size: 1.1em; font-weight: 700; border: none; border-radius: 8px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent;
             letter-spacing: 1px; box-sizing: border-box;
+            flex-shrink: 0; /* 潰れないように固定 */
         }
         .btn-reset-seq { background-color: #E60012; color: #ffffff; }
         .btn-reset-seq:active { background-color: #b8000e; }
         .btn-lock { background-color: #003A8C; color: #ffffff; }
         .btn-lock:active { background-color: #002663; }
 
-        /* パネルエリア（設定操作が最優先で広く使えるよう最適化） */
+        /* ❗【ここを劇的にカイゼン！】設定パネルの中だけを指で自由にスクロールできるように解放 */
         .box { 
             width: 100%; max-width: 480px; margin: 2px auto; padding: 8px 12px; 
             border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; 
-            text-align: left; box-sizing: border-box; flex-grow: 1; overflow: hidden;
+            text-align: left; box-sizing: border-box; 
+            flex-grow: 1; 
+            overflow-y: auto !important; /* 👈指で上下に自由にスクロールできる魔法の命令 */
+            -webkit-overflow-scrolling: touch; /* iPhoneでサクサク滑らかに動かす設定 */
         }
         .box-title { margin: 0 0 6px 0; font-size: 1em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 4px; letter-spacing: 0.5px; }
         
@@ -105,7 +109,7 @@
         .radio-label.active-seq { background: #238636; color: #fff; }
         .radio-label.active-uni { background: #1f6feb; color: #fff; }
         
-        /* なぞり文字ブロック（広く、タッチしやすく拡大） */
+        /* なぞり文字ブロック */
         #char-container { 
             display: flex; flex-wrap: wrap; gap: 4px; background: #0d1117; padding: 8px; 
             border-radius: 6px; min-height: 44px; touch-action: none; -webkit-user-select: none; user-select: none; border: 1px solid #30363d;
@@ -137,7 +141,7 @@
         
         #message { font-size: 0.95em; font-weight: 600; margin-top: 4px; text-align: center; min-height: 1.2em; padding: 6px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.3; }
         
-        /* 🚪 【新機能】横から引き出される「裏メニュー（ドロワー）」のスタイル */
+        /* 裏メニュー（ドロワー） */
         .slide-menu {
             position: fixed; top: 0; right: -100%; width: 85%; height: 100%;
             background-color: #161b22; border-left: 2px solid #30363d; z-index: 1000;
@@ -148,7 +152,6 @@
         .slide-menu.open { right: 0; }
         .menu-close { background: none; border: none; color: #f85149; font-size: 1.2em; font-weight: bold; cursor: pointer; align-self: flex-end; margin-bottom: 12px; }
         
-        /* 裏メニュー内の履歴ログ */
         #log-container { flex-grow: 1; overflow-y: auto; background: #0d1117; border-radius: 6px; padding: 8px; margin-top: 6px; border: 1px solid #30363d; }
         .log-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding: 6px 0; font-size: 0.8em; }
         .log-entry:last-child { border-bottom: none; }
@@ -259,7 +262,6 @@
         let currentDragMode = 'seq'; 
         let appState = 'SETUP'; 
 
-        // 🚪 メニューの開閉を制御する関数
         function toggleMenu() {
             slideMenu.classList.toggle("open");
         }
@@ -277,7 +279,6 @@
                 orderDirSelect.value = localStorage.getItem('orderDir');
             }
             
-            // 開いた瞬間は確実にロックを外してクリーンにする
             appState = 'SETUP'; 
             lockButton.style.display = 'block'; 
             resetSeqButton.style.display = 'none'; 
@@ -416,6 +417,18 @@
             }
         }
 
+        function handleMove(e) {
+            if (!isDragging || appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') return;
+            if (e.cancelable && e.type !== 'mousemove') e.preventDefault();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const el = document.elementFromPoint(clientX, clientY);
+            if (el && el.classList.contains('char-box')) { dragEndIdx = parseInt(el.dataset.index, 10); updateHighlight(); }
+        }
+
+        function handleEnd(e) { 
+            if (isDragging) { isDragging = false; saveSettingsFromHighlight(); if (lastScannedText) processSetupResult(lastScannedText); } 
+        }
+        
         document.addEventListener('mousemove', handleMove); document.addEventListener('mouseup', handleEnd);
         charContainer.addEventListener('mousedown', handleStart); 
         charContainer.addEventListener('touchstart', handleStart, { passive: false }); document.addEventListener('touchmove', handleMove, { passive: false }); document.addEventListener('touchend', handleEnd);
@@ -664,6 +677,13 @@
 
         function showMessage(text, color) { messageElement.innerText = text; messageElement.style.color = color; }
 
+        document.body.addEventListener('touchmove', function(e) {
+            // ❗コンテナ以外の画面全体のガタつきスクロールを防止
+            if (!e.target.closest('.box') && !e.target.closest('#log-container')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
         function resetChecker() {
             appState = 'SETUP';
             expectedNumber = null; fixedUniqueKey = null; scannedSeqHistory.clear(); lastScannedText = null;
@@ -684,7 +704,7 @@
         function allClear() {
             if (confirm("固定ユニークキーを含め、すべての状態を初期化します。よろしいですか？")) {
                 resetChecker();
-                toggleMenu(); // メニューを閉じる
+                toggleMenu(); 
                 showMessage("完全にリセットしました。次の新しいロットを設定してください。", "#f0f6fc");
             }
         }
