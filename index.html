@@ -11,8 +11,16 @@
             margin: 0; padding: 0; width: 100%; height: 100%; 
             overflow: hidden; /* 1画面に収めるため全体のスクロールを禁止 */
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; 
-            text-align: center; background-color: #0d1117; color: #f0f6fc; 
+            text-align: center; 
+            background-color: #0d1117; /* 基本の背景色 */
+            color: #f0f6fc; 
             -webkit-text-size-adjust: 100%; box-sizing: border-box;
+            transition: background-color 0.15s; /* 背景色が変わる時になめらかにする */
+        }
+
+        /* ❗【新機能】エラー判定の時に画面全体（body）を真っ赤にするクラス */
+        body.mode-error {
+            background-color: #8c0000 !important;
         }
 
         /* 画面全体を包むコンテナ（1画面に綺麗に収める） */
@@ -24,19 +32,22 @@
         /* 本番動作中になったら枠を「稼働中グリーン」に変化させる */
         body.mode-running .app-container { border-color: #238636 !important; }
         
+        /* ❗エラーの時は外枠を消して赤を際立たせる */
+        body.mode-error .app-container { border-color: transparent !important; }
+
         h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 4px 0; }
 
-        /* 📸 【ここを劇的に修正！】カメラの枠のサイズを「端末画面の縦幅50%」に強制固定 */
+        /* 📸 カメラのフレームサイズを端末画面の縦幅50%に強制ロック */
         #canvas-container { 
             margin: 0 auto; width: 100%; max-width: 480px; 
-            height: 50vh; /* ❗端末画面の縦幅のちょうど半分に指定 */
+            height: 50vh; /* 端末画面の縦幅のちょうど半分に指定 */
             max-height: 50vh;
             position: relative; cursor: pointer; border: 2px solid #30363d; border-radius: 8px; overflow: hidden; background-color: #000; box-sizing: border-box; 
             display: flex; justify-content: center; align-items: center;
         }
         canvas { 
             width: 100%; height: 100%; 
-            object-fit: cover !important; /* ❗映像を潰さずに枠内に綺麗に収める */
+            object-fit: cover !important; /* 映像を潰さずに枠内に綺麗に収める */
         }
         .zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; pointer-events: none; color: #8b949e; }
         
@@ -49,7 +60,7 @@
         }
         .btn-torch-on { background-color: #ffc107 !important; color: #000 !important; border-color: #ffc107 !important; }
         
-        /* カメラ直下のアナウンス文字（コンパクト化） */
+        /* カメラ直下のアナウンス文字 */
         #modeIndicator {
             width: 100%; max-width: 480px; margin: 4px auto; padding: 6px; font-size: 0.95em; font-weight: 800;
             background-color: rgba(240, 168, 66, 0.15); color: #f0a842; border: 1px solid #f0a842; border-radius: 6px;
@@ -59,30 +70,31 @@
             background-color: rgba(35, 134, 54, 0.2) !important; color: #56d364 !important; border-color: #238636 !important;
             animation: pulse 1.5s infinite;
         }
+        /* ❗エラーの時は文字盤も赤熱化 */
+        #modeIndicator.error-style {
+            background-color: rgba(255, 0, 0, 0.4) !important; color: #fff !important; border-color: #ff0000 !important;
+        }
         @keyframes pulse {
             0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; }
         }
 
-        /* ボタン共通スタイル（1画面に収めるためさらにスリム化） */
+        /* ボタン共通スタイル */
         .btn-large {
             display: block; width: 100%; max-width: 480px; margin: 6px auto;
             padding: 12px; font-size: 1.1em; font-weight: 700; border: none; border-radius: 8px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent;
             letter-spacing: 1px; box-sizing: border-box;
         }
-        /* 連番のみリセット（トッパンレッド） */
         .btn-reset-seq { background-color: #E60012; color: #ffffff; }
         .btn-reset-seq:active { background-color: #b8000e; }
-        
-        /* 設定確定（トッパンブルー） */
         .btn-lock { background-color: #003A8C; color: #ffffff; }
         .btn-lock:active { background-color: #002663; }
 
-        /* パネルエリア（高さを自動計算して収める） */
+        /* パネルエリア */
         .box { 
             width: 100%; max-width: 480px; margin: 4px auto; padding: 10px 14px; 
             border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; 
-            text-align: left; box-sizing: border-box; flex-grow: 1; overflow-y: auto; /* ここで下部をスクロール可能に */
+            text-align: left; box-sizing: border-box; flex-grow: 1; overflow-y: auto;
         }
         .box-title { margin: 0 0 6px 0; font-size: 1em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 4px; letter-spacing: 0.5px; }
         
@@ -123,7 +135,7 @@
         .expected { color: #ffd33d; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; }
         .highlight { color: #56d364; font-weight: 700; font-size: 1.5em; font-family: monospace; line-height: 1; }
         
-        /* ❗47桁が絶対に「...」で隠れず、綺麗に2行に折り返して全表示される設定 */
+        /* 47桁折り返し全表示設定 */
         .highlight-uni { 
             color: #79c0ff; font-weight: 700; font-size: 1.3em; font-family: monospace; 
             word-break: break-all; white-space: normal; max-width: 65%; text-align: right; line-height: 1.2;
@@ -131,7 +143,7 @@
         
         #message { font-size: 1em; font-weight: 600; margin-top: 6px; text-align: center; min-height: 1.2em; padding: 8px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.3; }
         
-        /* 履歴ログ（高さを調整して収める） */
+        /* 履歴ログ */
         #log-container { max-height: 120px; overflow-y: auto; background: #0d1117; border-radius: 6px; padding: 6px; margin-top: 6px; border: 1px solid #30363d; }
         .log-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding: 6px 0; font-size: 0.8em; }
         .log-entry:last-child { border-bottom: none; }
@@ -146,204 +158,7 @@
         .btn-group { display: flex; gap: 8px; margin-top: 8px; }
         button.action-btn { flex: 1; padding: 10px; font-size: 0.95em; font-weight: 600; cursor: pointer; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
         
-        /* 全リセットボタンのさらに下にiPhone用の余白を追加 */
-        .btn-all-clear { background-color: #161b22; color: #f85149; margin-top: 15px; margin-bottom: 20px; padding: 10px; font-size: 1em; font-weight: 600; border: 1px dashed #f85149; }
-    </style>
-</head>
-<body>
-
-  <div class="app-container">
-    <h2>QRコード連番チェッカー</h2>
-    
-    <button id="torchButton" onclick="toggleTorch()">ライト: OFF</button>
-    <video id="video" autoplay playsinline muted style="display:none;"></video>
-    
-    <div id="canvas-container" title="タップでズーム切り替え">
-        <canvas id="canvas"></canvas>
-        <div class="zoom-hint">タップで拡大</div>
-    </div>
-
-    <div id="modeIndicator">🛑 抽出ルール設定中（検査は停止しています）</div>
-
-    <button id="lockButton" class="btn-large btn-lock" onclick="lockSettings()">設定を確定して本番開始</button>
-    <button id="resetSeqButton" class="btn-large btn-reset-seq" onclick="resetSeqOnly()" style="display:none;">連番のみリセット（ユニークキー維持）</button>
-
-    <div class="box">
-        <h3 class="box-title">読み取り状況 <span id="statusBadge" class="status-badge status-setup">抽出ルール設定中</span></h3>
-        <div class="info-row">
-            <span class="info-label">次に来る番号:</span>
-            <span id="expectedNumber" class="expected">未登録</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">読んだ連番数値:</span>
-            <span id="targetResult" class="highlight">-</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">固定ユニークキー:</span>
-            <span id="uniqueResult" class="highlight-uni">未登録</span>
-        </div>
-        <div id="message">最初のQR（基準）を映して、連番とユニークキーの位置を設定してください。http://googleusercontent.com/image_generation_content/0
-
-篤志さん、大変失礼いたしました！先ほどまでは高さを「230px」という絶対的な数字に固定してしまっておりましたが、これでは画面サイズによって篤志さんの意図された「画面の半分くらい」というレイアウトになりません。
-
-サクサク読み取る仕組み（爆速解析）はそのまま、カメラフレームの高さを**「端末の画面サイズに合わせて、縦幅をきっちり50%（半分）にする黄金比率」**にフルコードを修正しました！
-
-これでどのスマホで見ても、カメラが画面の半分にスッキリ収まり、送っていただいた理想の画像と完全に一致する使いやすさになります。
-
----
-
-### 📋 【縦幅50%固定・完全決着版】フルコード（`index.html`）
-
-```html
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QRコード連番＆ユニークキーチェッカー</title>
-    <script src="[https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js](https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js)"></script>
-    <style>
-        /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
-        html, body { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; /* 1画面に収めるため全体のスクロールを禁止 */
-            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; 
-            text-align: center; background-color: #0d1117; color: #f0f6fc; 
-            -webkit-text-size-adjust: 100%; box-sizing: border-box;
-        }
-
-        /* 画面全体を包むコンテナ（1画面に綺麗に収める） */
-        .app-container {
-            display: flex; flex-direction: column; width: 100%; height: 100%; padding: 8px; box-sizing: border-box;
-            border: 6px solid #f0a842; transition: border-color 0.3s;
-        }
-        
-        /* 本番動作中になったら枠を「稼働中グリーン」に変化させる */
-        body.mode-running .app-container { border-color: #238636 !important; }
-        
-        h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 4px 0; }
-
-        /* 📸 【ここを劇的に修正！】カメラの枠のサイズを「端末画面の縦幅50%」に強制固定 */
-        #canvas-container { 
-            margin: 0 auto; width: 100%; max-width: 480px; 
-            height: 50vh; /* ❗端末画面の縦幅のちょうど半分に指定 */
-            max-height: 50vh;
-            position: relative; cursor: pointer; border: 2px solid #30363d; border-radius: 8px; overflow: hidden; background-color: #000; box-sizing: border-box; 
-            display: flex; justify-content: center; align-items: center;
-        }
-        canvas { 
-            width: 100%; height: 100%; 
-            object-fit: cover !important; /* ❗映像を潰さずに枠内に綺麗に収める */
-        }
-        .zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; pointer-events: none; color: #8b949e; }
-        
-        /* ライトボタン */
-        #torchButton {
-            position: fixed; top: 12px; right: 12px; z-index: 100;
-            width: auto; padding: 8px 14px; font-size: 0.9em; font-weight: 600;
-            background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        }
-        .btn-torch-on { background-color: #ffc107 !important; color: #000 !important; border-color: #ffc107 !important; }
-        
-        /* カメラ直下のアナウンス文字（コンパクト化） */
-        #modeIndicator {
-            width: 100%; max-width: 480px; margin: 4px auto; padding: 6px; font-size: 0.95em; font-weight: 800;
-            background-color: rgba(240, 168, 66, 0.15); color: #f0a842; border: 1px solid #f0a842; border-radius: 6px;
-            box-sizing: border-box;
-        }
-        #modeIndicator.run-style {
-            background-color: rgba(35, 134, 54, 0.2) !important; color: #56d364 !important; border-color: #238636 !important;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; }
-        }
-
-        /* ボタン共通スタイル（1画面に収めるためさらにスリム化） */
-        .btn-large {
-            display: block; width: 100%; max-width: 480px; margin: 6px auto;
-            padding: 12px; font-size: 1.1em; font-weight: 700; border: none; border-radius: 8px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent;
-            letter-spacing: 1px; box-sizing: border-box;
-        }
-        /* 連番のみリセット（トッパンレッド） */
-        .btn-reset-seq { background-color: #E60012; color: #ffffff; }
-        .btn-reset-seq:active { background-color: #b8000e; }
-        
-        /* 設定確定（トッパンブルー） */
-        .btn-lock { background-color: #003A8C; color: #ffffff; }
-        .btn-lock:active { background-color: #002663; }
-
-        /* パネルエリア（高さを自動計算して収める） */
-        .box { 
-            width: 100%; max-width: 480px; margin: 4px auto; padding: 10px 14px; 
-            border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; 
-            text-align: left; box-sizing: border-box; flex-grow: 1; overflow-y: auto; /* ここで下部をスクロール可能に */
-        }
-        .box-title { margin: 0 0 6px 0; font-size: 1em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 4px; letter-spacing: 0.5px; }
-        
-        /* ステータス表示 */
-        .status-badge { float: right; padding: 1px 6px; border-radius: 4px; font-size: 0.75em; font-weight: 700; }
-        .status-setup { background-color: #f0a842; color: #000; }
-        .status-run { background-color: #238636; color: #fff; }
-
-        /* モード切替タブスタイル */
-        .mode-selector { margin-bottom: 10px; display: flex; background: #0d1117; padding: 2px; border-radius: 6px; border: 1px solid #30363d; }
-        .radio-label { flex: 1; text-align: center; font-size: 0.9em; font-weight: 600; cursor: pointer; padding: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
-        .radio-label input { display: none; }
-        .radio-label.active-seq { background: #238636; color: #fff; }
-        .radio-label.active-uni { background: #1f6feb; color: #fff; }
-        
-        /* なぞり文字ブロック */
-        #char-container { 
-            display: flex; flex-wrap: wrap; gap: 4px; background: #0d1117; padding: 8px; 
-            border-radius: 6px; min-height: 40px; touch-action: none; -webkit-user-select: none; user-select: none; border: 1px solid #30363d;
-        }
-        .char-box {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 28px; height: 38px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
-            font-size: 1.1em; font-weight: 700; color: #c9d1d9; cursor: pointer; font-family: monospace;
-        }
-        .char-box.selected-seq { background: #238636; color: #fff; border-color: #2ea043; }
-        .char-box.selected-uni { background: #1f6feb; color: #fff; border-color: #388bfd; }
-        .empty-msg { color: #8b949e; font-size: 0.8em; margin: auto; }
-        
-        .setting-row { margin-top: 8px; font-size: 0.9em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
-        .setting-row select { padding: 4px 8px; font-size: 1em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
-        
-        /* データ数値表示 */
-        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0; padding: 2px 0; border-bottom: 1px solid #21262d; }
-        .info-row:last-of-type { border-bottom: none; }
-        .info-label { font-size: 0.9em; color: #8b949e; white-space: nowrap; margin-right: 10px; }
-        
-        .expected { color: #ffd33d; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; }
-        .highlight { color: #56d364; font-weight: 700; font-size: 1.5em; font-family: monospace; line-height: 1; }
-        
-        /* ❗47桁が絶対に「...」で隠れず、綺麗に2行に折り返して全表示される設定 */
-        .highlight-uni { 
-            color: #79c0ff; font-weight: 700; font-size: 1.3em; font-family: monospace; 
-            word-break: break-all; white-space: normal; max-width: 65%; text-align: right; line-height: 1.2;
-        }
-        
-        #message { font-size: 1em; font-weight: 600; margin-top: 6px; text-align: center; min-height: 1.2em; padding: 8px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.3; }
-        
-        /* 履歴ログ（高さを調整して収める） */
-        #log-container { max-height: 120px; overflow-y: auto; background: #0d1117; border-radius: 6px; padding: 6px; margin-top: 6px; border: 1px solid #30363d; }
-        .log-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding: 6px 0; font-size: 0.8em; }
-        .log-entry:last-child { border-bottom: none; }
-        .log-time { color: #8b949e; font-family: monospace; }
-        .log-ok { color: #56d364; font-weight: 700; }
-        .log-ng { color: #f85149; font-weight: 700; }
-        .log-wrong-key { color: #ff9a46; font-weight: 700; }
-        .log-dup { color: #ff9a46; font-weight: 700; }
-        .log-first { color: #58a6ff; font-weight: 700; }
-
-        /* 下部履歴ボタン */
-        .btn-group { display: flex; gap: 8px; margin-top: 8px; }
-        button.action-btn { flex: 1; padding: 10px; font-size: 0.95em; font-weight: 600; cursor: pointer; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
-        
-        /* 全リセットボタンのさらに下にiPhone用の余白を追加 */
+        /* 全リセットボタン */
         .btn-all-clear { background-color: #161b22; color: #f85149; margin-top: 15px; margin-bottom: 20px; padding: 10px; font-size: 1em; font-weight: 600; border: 1px dashed #f85149; }
     </style>
 </head>
@@ -457,9 +272,7 @@
             if (localStorage.getItem('orderDir')) {
                 orderDirSelect.value = localStorage.getItem('orderDir');
             }
-            document.body.classList.remove("mode-running");
-            modeIndicator.innerText = "🛑 抽出ルール設定中（検査は停止しています）";
-            modeIndicator.className = "";
+            clearErrorState();
             appState = 'SETUP'; 
         });
 
@@ -692,19 +505,22 @@
             
             const dir = parseInt(orderDirSelect.value, 10);
             expectedNumber = scannedNumber + dir;
-            expectedElement.innerText = expectedNumber;
+            expectedElement.innerText = TuneExpected(expectedNumber);
             scannedSeqHistory.add(scannedNumber);
 
             lockButton.style.display = 'none'; resetSeqButton.style.display = 'block'; settingBox.style.display = 'none'; 
             statusBadge.innerText = '本番動作中'; statusBadge.className = 'status-badge status-run';
 
-            showMessage(`確定登録：ユニークキー「${fixedUniqueKey}」/ 次の連番「${expectedNumber}」`, "#56d364");
+            document.body.classList.add("mode-running");
+            modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
+            modeIndicator.className = "run-style";
+
+            showMessage("確定登録完了：本番チェック中です。", "#56d364");
             playBeep('first');
             addLogEntry('FIRST', scannedNumber, fixedUniqueKey, null);
             lastScanTime = new Date().getTime(); 
         }
 
-        // 🟢 連番のみを部分リセット（ユニークキーとトレース位置はキープ）
         function resetSeqOnly() {
             expectedNumber = null;
             scannedSeqHistory.clear();
@@ -713,6 +529,8 @@
             expectedElement.innerText = "連番待機中";
             
             appState = 'RUNNING_SEQ_WAIT'; 
+            clearErrorState(); // ❗リセット時も赤背景をクリアする
+            modeIndicator.innerText = "🟡 基準連番の再スキャン待機中...";
             showMessage(`ユニークキー「${fixedUniqueKey}」を維持して連番をリセットしました。次の連番基準となるQRをかざしてください。`, "#58a6ff");
             playBeep('first');
         }
@@ -724,17 +542,17 @@
         }
 
         function renderLogUI() {
-            if (scanLogs.length === 0) { logContainer.innerHTML = '<div class="empty-msg" style="text-align: center; margin-top: 5px;">記録はありません</div>'; return; }
+            if (scanLogs.length === 0) { logContainer.innerHTML = '<div class="empty-msg" style="text-align: center; margin-top: 10px;">記録はありません</div>'; return; }
             logContainer.innerHTML = '';
             scanLogs.slice(-50).reverse().forEach(log => {
                 const div = document.createElement('div'); div.className = 'log-entry';
                 let statusHtml = '';
                 if (log.status === 'OK') statusHtml = '<span class="log-ok">OK</span>';
-                else if (log.status === 'NG') statusHtml = `<span class="log-ng">順NG (期待:${log.expected})</span>`;
+                else if (log.status === 'NG') statusHtml = `<span class="log-ng">順NG (期待:${TuneExpected(log.expected)})</span>`;
                 else if (log.status === 'WRONG_KEY') statusHtml = `<span class="log-wrong-key">ユニーク違い</span>`;
                 else if (log.status === 'DUP') statusHtml = '<span class="log-dup">重複NG</span>';
                 else if (log.status === 'FIRST') statusHtml = '<span class="log-first">基準登録</span>';
-                div.innerHTML = `<span class="log-time">${log.time}</span><span style="flex: 1; text-align: center; font-family: monospace;">#${log.extracted} [${log.uniKey}]</span>${statusHtml}`;
+                div.innerHTML = `<span class="log-time">${log.time}</span><span style="flex: 1; text-align: center; font-family: monospace;">#${TuneExpected(log.extracted)} [${log.uniKey}]</span>${statusHtml}`;
                 logContainer.appendChild(div);
             });
         }
@@ -743,7 +561,7 @@
             if (scanLogs.length === 0) { alert("保存するデータがありません。"); return; }
             let csvContent = "\uFEFF時間,判定,抽出した連番,抽出したユニークキー,期待値\n";
             scanLogs.forEach(log => {
-                const expected = log.expected !== null ? log.expected : "-";
+                const expected = log.expected !== null ? TuneExpected(log.expected) : "-";
                 csvContent += `${log.time},${log.status},${log.extracted},"${log.uniKey}",${expected}\n`;
             });
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), url = URL.createObjectURL(blob), link = document.createElement("a");
@@ -755,6 +573,24 @@
 
         function clearLogs() { if (confirm("履歴データをすべて消去しますか？")) { scanLogs = []; resetChecker(); renderLogUI(); } }
 
+        // ❗【新機能】エラー状態を完全にリセットして正常画面に戻す関数
+        function clearErrorState() {
+            document.body.classList.remove("mode-error");
+            if (appState === 'RUNNING') {
+                modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
+                modeIndicator.className = "run-style";
+            }
+        }
+
+        // ❗【新機能】エラー発生時に背景を赤く染める関数
+        function triggerErrorState(msgText) {
+            document.body.classList.add("mode-error");
+            modeIndicator.innerText = "🚨 エラー判定発生中 🚨";
+            modeIndicator.className = "error-style";
+            showMessage(msgText, "#fff"); /* 文字を見やすく白に変更 */
+            playBeep('ng');
+        }
+
         function processScanResult(decodedText) {
             let targetText = decodedText, uniKeyText = decodedText;
             const sSeq = document.getElementById('seqStart').value, lSeq = document.getElementById('seqLen').value;
@@ -765,52 +601,65 @@
 
             targetResultElement.innerText = targetText;
             
-            // 部分リセット後の新連番基準待機
             if (appState === 'RUNNING_SEQ_WAIT') {
                 const scannedNumber = parseInt(targetText, 10);
-                if (isNaN(scannedNumber)) { showMessage(`エラー：「${targetText}」は数字ではありません。`, "#f85149"); playBeep('ng'); return; }
+                if (isNaN(scannedNumber)) { triggerErrorState(`エラー：「${targetText}」は数字ではありません。`); return; }
                 
                 if (uniKeyText !== fixedUniqueKey) {
-                    showMessage(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`, "#f85149");
-                    playBeep('ng'); addLogEntry('WRONG_KEY', scannedNumber, uniKeyText, null); return;
+                    triggerErrorState(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`);
+                    addLogEntry('WRONG_KEY', scannedNumber, uniKeyText, null); return;
                 }
                 
                 appState = 'RUNNING';
+                clearErrorState();
                 const dir = parseInt(orderDirSelect.value, 10);
                 expectedNumber = scannedNumber + dir;
-                expectedElement.innerText = expectedNumber;
+                expectedElement.innerText = TuneExpected(expectedNumber);
                 scannedSeqHistory.add(scannedNumber);
                 
-                showMessage(`新連番登録：ユニーク「${fixedUniqueKey}」/ 連番「${scannedNumber}」`, "#56d364");
+                showMessage("新連番登録：ユニーク一致＆正しい連番です。", "#56d364");
                 playBeep('first');
                 addLogEntry('FIRST', scannedNumber, uniKeyText, null);
                 return;
             }
 
             const scannedNumber = parseInt(targetText, 10);
-            if (isNaN(scannedNumber)) { showMessage(`エラー：「${targetText}」は数字ではありません。`, "#f85149"); playBeep('ng'); return; }
+            if (isNaN(scannedNumber)) { triggerErrorState(`エラー：「${targetText}」は数字ではありません。`); return; }
 
             const dir = parseInt(orderDirSelect.value, 10);
 
+            // 1. ユニークキー違いエラー
             if (uniKeyText !== fixedUniqueKey) {
-                showMessage(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`, "#f85149");
-                playBeep('ng'); addLogEntry('WRONG_KEY', scannedNumber, uniKeyText, expectedNumber); return;
+                triggerErrorState(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`);
+                addLogEntry('WRONG_KEY', scannedNumber, uniKeyText, expectedNumber); return;
             }
 
+            // 2. 重複スキャンエラー
             if (scannedSeqHistory.has(scannedNumber)) {
-                showMessage(`⚠️ 重重複NG：この連番「${scannedNumber}」はスキャン済みです。`, "#ff9a46");
-                playBeep('ng'); addLogEntry('DUP', scannedNumber, uniKeyText, expectedNumber); return;
+                triggerErrorState(`⚠️ 重複NG：この連番「${TuneExpected(scannedNumber)}」はスキャン済みです。`);
+                addLogEntry('DUP', scannedNumber, uniKeyText, expectedNumber); return;
             }
 
+            // 3. 連番の順序OK判定 or 順NGエラー
             if (scannedNumber === expectedNumber) {
+                clearErrorState(); /* 正常に読めたら赤背景を自動クリア */
                 showMessage(`✅ OK：ユニーク一致＆正しい連番です。`, "#56d364");
                 scannedSeqHistory.add(scannedNumber); addLogEntry('OK', scannedNumber, uniKeyText, expectedNumber);
                 expectedNumber = scannedNumber + dir; playBeep('ok');
             } else {
-                showMessage(`❌ 順NG：連番が違います。 (期待: ${expectedNumber})`, "#f85149");
-                playBeep('ng'); addLogEntry('NG', scannedNumber, uniKeyText, expectedNumber);
+                triggerErrorState(`❌ 順NG：連番が違います。 (期待: ${TuneExpected(expectedNumber)})`);
+                addLogEntry('NG', scannedNumber, uniKeyText, expectedNumber);
             }
-            expectedElement.innerText = expectedNumber !== null ? expectedNumber : "未登録";
+            expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : "未登録";
+        }
+
+        // ゼロパディング（桁揃え）を維持する補助関数
+        function TuneExpected(num) {
+            const lSeq = document.getElementById('seqLen').value;
+            if (lSeq !== "" && !isNaN(lSeq) && num !== null) {
+                return String(num).padStart(parseInt(lSeq, 10), '0');
+            }
+            return num;
         }
 
         function showMessage(text, color) { messageElement.innerText = text; messageElement.style.color = color; }
@@ -823,11 +672,13 @@
             lockButton.style.display = 'block'; resetSeqButton.style.display = 'none'; settingBox.style.display = 'block';
             statusBadge.innerText = '抽出ルール設定中'; statusBadge.className = 'status-badge status-setup';
             
+            document.body.classList.remove("mode-running");
+            clearErrorState();
+
             showMessage("最初のQR（基準）を映して、連番とユニークキーの位置を設定してください。", "#f0f6fc");
             playBeep('first');
         }
 
-        // ⚠️ ロット終了（完全初期化）
         function allClear() {
             if (confirm("固定ユニークキーを含め、すべての状態を初期化します。よろしいですか？")) {
                 resetChecker();
