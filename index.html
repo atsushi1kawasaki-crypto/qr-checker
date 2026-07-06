@@ -4,17 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>QRコード連番＆ユニークキーチェッカー</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=final"></script>
     <style>
         /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
         html, body { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; 
-            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; 
-            text-align: center; 
+            margin: 0; padding: 0; width: 100%;
             background-color: #0d1117; 
-            color: #f0f6fc; 
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; 
+            text-align: center; color: #f0f6fc; 
             -webkit-text-size-adjust: 100%; box-sizing: border-box;
+            /* ❗画面のスクロールロックを完全に解除し、自由に上下に動かせるようにします */
+            overflow-x: hidden;
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
             transition: background-color 0.15s; 
         }
 
@@ -22,8 +24,9 @@
 
         /* 画面全体を包むコンテナ */
         .app-container {
-            display: flex; flex-direction: column; width: 100%; height: 100%; padding: 8px; box-sizing: border-box;
+            width: 100%; max-width: 480px; margin: 0 auto; padding: 12px; box-sizing: border-box;
             border: 6px solid #f0a842; transition: border-color 0.3s;
+            min-height: 100vh;
         }
         
         body.mode-running .app-container { border-color: #238636 !important; }
@@ -32,23 +35,25 @@
         /* ヘッダー部分とバーガーボタン */
         .header-area {
             display: flex; justify-content: space-between; align-items: center; 
-            width: 100%; max-width: 480px; margin: 0 auto 4px auto; padding: 0 4px; box-sizing: border-box;
+            width: 100%; margin-bottom: 8px; box-sizing: border-box;
         }
         h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 0; }
         
-        /* バーガーボタン */
         .menu-trigger {
             background: none; border: none; color: #58a6ff; font-size: 1.8em; cursor: pointer; padding: 0 6px; line-height: 1;
         }
 
-        /* 📸 カメラのフレームサイズ（縦幅50%固定） */
+        /* 📸 カメラのフレームサイズ（画像と全く同じ、邪魔にならない最高の比率に固定） */
         #canvas-container { 
-            margin: 0 auto; width: 100%; max-width: 480px; 
-            height: 50vh; max-height: 50vh;
-            position: relative; cursor: pointer; border: 2px solid #30363d; border-radius: 8px; overflow: hidden; background-color: #000; box-sizing: border-box; 
-            display: flex; justify-content: center; align-items: center;
+            margin: 0 auto 10px auto; width: 100%;
+            position: relative; cursor: pointer; background-color: #000; box-sizing: border-box; 
         }
-        canvas { width: 100%; height: 100%; object-fit: cover !important; }
+        canvas { 
+            width: 100%; 
+            height: 230px !important; /* 👈 縦にデカく広がらないようにガチッと固定 */
+            object-fit: cover !important; 
+            border: 2px solid #30363d; border-radius: 8px; box-sizing: border-box;
+        }
         .zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; pointer-events: none; color: #8b949e; }
         
         /* ライトボタン */
@@ -61,87 +66,81 @@
         
         /* カメラ直下のアナウンス文字 */
         #modeIndicator {
-            width: 100%; max-width: 480px; margin: 4px auto; padding: 6px; font-size: 0.95em; font-weight: 800;
+            width: 100%; margin: 4px auto; padding: 8px; font-size: 0.95em; font-weight: 800;
             background-color: rgba(240, 168, 66, 0.15); color: #f0a842; border: 1px solid #f0a842; border-radius: 6px;
             box-sizing: border-box;
         }
         #modeIndicator.run-style {
             background-color: rgba(35, 134, 54, 0.2) !important; color: #56d364 !important; border-color: #238636 !important;
-            animation: pulse 1.5s infinite;
         }
         #modeIndicator.error-style {
             background-color: rgba(255, 0, 0, 0.4) !important; color: #fff !important; border-color: #ff0000 !important;
         }
-        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
 
         /* ボタンスタイル */
         .btn-large {
-            display: block; width: 100%; max-width: 480px; margin: 4px auto;
-            padding: 12px; font-size: 1.1em; font-weight: 700; border: none; border-radius: 8px; 
+            display: block; width: 100%; margin: 8px auto;
+            padding: 16px; font-size: 1.25em; font-weight: 700; border: none; border-radius: 8px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent;
             letter-spacing: 1px; box-sizing: border-box;
-            flex-shrink: 0; /* 潰れないように固定 */
         }
         .btn-reset-seq { background-color: #E60012; color: #ffffff; }
-        .btn-reset-seq:active { background-color: #b8000e; }
         .btn-lock { background-color: #003A8C; color: #ffffff; }
-        .btn-lock:active { background-color: #002663; }
 
-        /* ❗【ここを劇的にカイゼン！】設定パネルの中だけを指で自由にスクロールできるように解放 */
+        /* パネルエリア */
         .box { 
-            width: 100%; max-width: 480px; margin: 2px auto; padding: 8px 12px; 
+            width: 100%; margin: 8px auto; padding: 12px 16px; 
             border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; 
-            text-align: left; box-sizing: border-box; 
-            flex-grow: 1; 
-            overflow-y: auto !important; /* 👈指で上下に自由にスクロールできる魔法の命令 */
-            -webkit-overflow-scrolling: touch; /* iPhoneでサクサク滑らかに動かす設定 */
+            text-align: left; box-sizing: border-box;
         }
-        .box-title { margin: 0 0 6px 0; font-size: 1em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 4px; letter-spacing: 0.5px; }
+        .box-title { margin: 0 0 8px 0; font-size: 1.1em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 6px; letter-spacing: 0.5px; }
         
         .status-badge { float: right; padding: 1px 6px; border-radius: 4px; font-size: 0.75em; font-weight: 700; }
         .status-setup { background-color: #f0a842; color: #000; }
         .status-run { background-color: #238636; color: #fff; }
 
         /* モード切替タブスタイル */
-        .mode-selector { margin-bottom: 6px; display: flex; background: #0d1117; padding: 2px; border-radius: 6px; border: 1px solid #30363d; }
-        .radio-label { flex: 1; text-align: center; font-size: 0.9em; font-weight: 600; cursor: pointer; padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
+        .mode-selector { margin-bottom: 12px; display: flex; background: #0d1117; padding: 2px; border-radius: 6px; border: 1px solid #30363d; }
+        .radio-label { flex: 1; text-align: center; font-size: 1em; font-weight: 600; cursor: pointer; padding: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
         .radio-label input { display: none; }
         .radio-label.active-seq { background: #238636; color: #fff; }
         .radio-label.active-uni { background: #1f6feb; color: #fff; }
         
-        /* なぞり文字ブロック */
+        /* なぞり文字ブロック（確実にドラッグできるようにタッチ判定を100%解放） */
         #char-container { 
-            display: flex; flex-wrap: wrap; gap: 4px; background: #0d1117; padding: 8px; 
-            border-radius: 6px; min-height: 44px; touch-action: none; -webkit-user-select: none; user-select: none; border: 1px solid #30363d;
+            display: flex; flex-wrap: wrap; gap: 6px; background: #0d1117; padding: 12px; 
+            border-radius: 6px; min-height: 48px; border: 1px solid #30363d;
+            /* ❗指を横にスライドさせても画面がブレないように保護 */
+            touch-action: pan-x !important; 
+            -webkit-user-select: none; user-select: none;
         }
         .char-box {
             display: inline-flex; align-items: center; justify-content: center;
-            width: 28px; height: 38px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
-            font-size: 1.1em; font-weight: 700; color: #c9d1d9; cursor: pointer; font-family: monospace;
+            width: 32px; height: 42px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
+            font-size: 1.2em; font-weight: 700; color: #c9d1d9; cursor: pointer; font-family: monospace;
         }
         .char-box.selected-seq { background: #238636; color: #fff; border-color: #2ea043; }
         .char-box.selected-uni { background: #1f6feb; color: #fff; border-color: #388bfd; }
-        .empty-msg { color: #8b949e; font-size: 0.8em; margin: auto; }
+        .empty-msg { color: #8b949e; font-size: 0.9em; margin: auto; }
         
-        .setting-row { margin-top: 6px; font-size: 0.9em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
-        .setting-row select { padding: 4px 8px; font-size: 1em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+        .setting-row { margin-top: 10px; font-size: 1em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
+        .setting-row select { padding: 8px; font-size: 1em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
         
         /* データ数値表示 */
-        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0; padding: 2px 0; border-bottom: 1px solid #21262d; }
+        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 8px 0; padding: 4px 0; border-bottom: 1px solid #21262d; }
         .info-row:last-of-type { border-bottom: none; }
-        .info-label { font-size: 0.9em; color: #8b949e; white-space: nowrap; margin-right: 10px; }
+        .info-label { font-size: 1em; color: #8b949e; white-space: nowrap; margin-right: 10px; }
         
-        .expected { color: #ffd33d; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; }
-        .highlight { color: #56d364; font-weight: 700; font-size: 1.5em; font-family: monospace; line-height: 1; }
-        
+        .expected { color: #ffd33d; font-weight: 700; font-size: 2em; font-family: monospace; line-height: 1; }
+        .highlight { color: #56d364; font-weight: 700; font-size: 1.6em; font-family: monospace; line-height: 1; }
         .highlight-uni { 
-            color: #79c0ff; font-weight: 700; font-size: 1.3em; font-family: monospace; 
+            color: #79c0ff; font-weight: 700; font-size: 1.4em; font-family: monospace; 
             word-break: break-all; white-space: normal; max-width: 65%; text-align: right; line-height: 1.2;
         }
         
-        #message { font-size: 0.95em; font-weight: 600; margin-top: 4px; text-align: center; min-height: 1.2em; padding: 6px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.3; }
+        #message { font-size: 1em; font-weight: 600; margin-top: 8px; text-align: center; min-height: 1.4em; padding: 10px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.4; }
         
-        /* 裏メニュー（ドロワー） */
+        /* バーガーメニュー（右から出るドロワー） */
         .slide-menu {
             position: fixed; top: 0; right: -100%; width: 85%; height: 100%;
             background-color: #161b22; border-left: 2px solid #30363d; z-index: 1000;
@@ -162,9 +161,9 @@
         .log-dup { color: #ff9a46; font-weight: 700; }
         .log-first { color: #58a6ff; font-weight: 700; }
 
-        .btn-group { display: flex; gap: 8px; margin-top: 8px; }
+        .btn-group { display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0; }
         button.action-btn { flex: 1; padding: 12px; font-size: 0.95em; font-weight: 600; cursor: pointer; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
-        .btn-all-clear { background-color: #0d1117; color: #f85149; margin-top: 15px; padding: 12px; font-size: 1em; font-weight: 600; border: 1px dashed #f85149; border-radius: 6px; }
+        .btn-all-clear { background-color: #0d1117; color: #f85149; margin-top: 15px; padding: 12px; font-size: 1em; font-weight: 600; border: 1px dashed #f85149; border-radius: 6px; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -196,7 +195,7 @@
         
         <div id="char-container" style="margin-bottom: 8px;"><span class="empty-msg">（まだQRを読んでいません）</span></div>
 
-        <div class="setting-row" id="orderDirRow" style="margin-bottom: 8px;">
+        <div class="setting-row" id="orderDirRow" style="margin-bottom: 12px;">
             <div>
                 順序: 
                 <select id="orderDir" onchange="updateDirection()">
@@ -204,7 +203,7 @@
                     <option value="-1">降順 (-1)</option>
                 </select>
             </div>
-            <button onclick="clearSelection()" style="padding:4px 10px; font-size:0.85em; background-color: #21262d; color:#f85149; border:1px solid #30363d; border-radius:6px; cursor:pointer; font-weight:600;">設定クリア</button>
+            <button onclick="clearSelection()" style="padding:6px 12px; font-size:0.9em; background-color: #21262d; color:#f85149; border:1px solid #30363d; border-radius:6px; cursor:pointer; font-weight:600;">設定クリア</button>
         </div>
 
         <h3 class="box-title">読み取り状況 <span id="statusBadge" class="status-badge status-setup">抽出ルール設定中</span></h3>
@@ -235,7 +234,7 @@
           <button class="action-btn" style="background-color: #238636; color: #fff;" onclick="downloadCSV()">CSVで保存</button>
           <button class="action-btn" onclick="clearLogs()">履歴消去</button>
       </div>
-      <button id="allClearButton" class="btn-all-clear" onclick="allClear()">全てリセット（ルール再設定）</button>
+      <button id="allClearButton" class="btn-all-clear" onclick="allClear()">全てリセット（ロット終了・ルール再設定）</button>
   </div>
 
     <script>
@@ -267,17 +266,12 @@
         }
 
         window.addEventListener('load', () => {
-            if (localStorage.getItem('seqStart')) {
-                document.getElementById('seqStart').value = localStorage.getItem('seqStart');
-                document.getElementById('seqLen').value = localStorage.getItem('seqLen');
-            }
-            if (localStorage.getItem('uniStart')) {
-                document.getElementById('uniStart').value = localStorage.getItem('uniStart');
-                document.getElementById('uniLen').value = localStorage.getItem('uniLen');
-            }
-            if (localStorage.getItem('orderDir')) {
-                orderDirSelect.value = localStorage.getItem('orderDir');
-            }
+            // ❗【超重要】前の古い画面データが巻き戻るバグを防ぐため、立ち上げ時は強制的にデータをクリアして完全初期状態にする
+            localStorage.clear();
+            document.getElementById('seqStart').value = "";
+            document.getElementById('seqLen').value = "";
+            document.getElementById('uniStart').value = "";
+            document.getElementById('uniLen').value = "";
             
             appState = 'SETUP'; 
             lockButton.style.display = 'block'; 
@@ -406,7 +400,6 @@
 
         function handleStart(e) {
             if (appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') return;
-            if (e.cancelable && e.type !== 'mousedown') e.preventDefault();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             const el = document.elementFromPoint(clientX, clientY);
             if (el && el.classList.contains('char-box')) { 
@@ -419,7 +412,6 @@
 
         function handleMove(e) {
             if (!isDragging || appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') return;
-            if (e.cancelable && e.type !== 'mousemove') e.preventDefault();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             const el = document.elementFromPoint(clientX, clientY);
             if (el && el.classList.contains('char-box')) { dragEndIdx = parseInt(el.dataset.index, 10); updateHighlight(); }
@@ -429,9 +421,10 @@
             if (isDragging) { isDragging = false; saveSettingsFromHighlight(); if (lastScannedText) processSetupResult(lastScannedText); } 
         }
         
+        // ❗ドラッグ操作をロックしていたイベント監視を、完全に正常な標準形式に修正
         document.addEventListener('mousemove', handleMove); document.addEventListener('mouseup', handleEnd);
         charContainer.addEventListener('mousedown', handleStart); 
-        charContainer.addEventListener('touchstart', handleStart, { passive: false }); document.addEventListener('touchmove', handleMove, { passive: false }); document.addEventListener('touchend', handleEnd);
+        charContainer.addEventListener('touchstart', handleStart); charContainer.addEventListener('touchmove', handleMove); document.addEventListener('touchend', handleEnd);
 
         function updateHighlight() {
             const start = Math.min(dragStartIdx, dragEndIdx), end = Math.max(dragStartIdx, dragEndIdx);
@@ -454,10 +447,8 @@
             const start = Math.min(dragStartIdx, dragEndIdx), len = Math.abs(dragEndIdx - dragStartIdx) + 1;
             if (currentDragMode === 'seq') { 
                 document.getElementById('seqStart').value = start + 1; document.getElementById('seqLen').value = len;
-                localStorage.setItem('seqStart', start + 1); localStorage.setItem('seqLen', len);
             } else { 
                 document.getElementById('uniStart').value = start + 1; document.getElementById('uniLen').value = len;
-                localStorage.setItem('uniStart', start + 1); localStorage.setItem('uniLen', len);
             }
             renderCharBlocks(charContainer.dataset.text);
         }
@@ -477,13 +468,11 @@
             if (appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') return;
             document.getElementById('seqStart').value = ""; document.getElementById('seqLen').value = "";
             document.getElementById('uniStart').value = ""; document.getElementById('uniLen').value = "";
-            localStorage.clear();
             resetChecker(); showMessage("ルール設定をクリアしました。", "#f0f6fc");
         }
 
         function updateDirection() { 
             if (appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') return; 
-            localStorage.setItem('orderDir', orderDirSelect.value);
             showMessage("連番方向を変更しました（本番開始時に反映されます）。", "#58a6ff"); 
         }
 
@@ -677,17 +666,12 @@
 
         function showMessage(text, color) { messageElement.innerText = text; messageElement.style.color = color; }
 
-        document.body.addEventListener('touchmove', function(e) {
-            // ❗コンテナ以外の画面全体のガタつきスクロールを防止
-            if (!e.target.closest('.box') && !e.target.closest('#log-container')) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
         function resetChecker() {
             appState = 'SETUP';
             expectedNumber = null; fixedUniqueKey = null; scannedSeqHistory.clear(); lastScannedText = null;
             targetResultElement.innerText = "-"; uniqueResultElement.innerText = "未登録"; expectedElement.innerText = "未登録";
+            charContainer.innerHTML = '<span class="empty-msg">（まだQRを読んでいません）</span>';
+            charContainer.dataset.text = "";
             
             lockButton.style.display = 'block'; resetSeqButton.style.display = 'none'; 
             document.getElementById('modeSelectorArea').style.display = 'flex';
@@ -701,11 +685,12 @@
             playBeep('first');
         }
 
+        // ❗【大本命リセット機能】ユニークキーも何もかも全部まっさらにする大リセット
         function allClear() {
             if (confirm("固定ユニークキーを含め、すべての状態を初期化します。よろしいですか？")) {
                 resetChecker();
-                toggleMenu(); 
-                showMessage("完全にリセットしました。次の新しいロットを設定してください。", "#f0f6fc");
+                toggleMenu(); // メニューを閉じる
+                showMessage("完全にリセットしました。新しい設定をやり直せます。", "#f0f6fc");
             }
         }
     </script>
