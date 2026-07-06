@@ -12,43 +12,34 @@
             overflow: hidden; /* 1画面に収めるため全体のスクロールを禁止 */
             font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; 
             text-align: center; 
-            background-color: #0d1117; /* 基本の背景色 */
+            background-color: #0d1117; 
             color: #f0f6fc; 
             -webkit-text-size-adjust: 100%; box-sizing: border-box;
-            transition: background-color 0.15s; /* 背景色が変わる時になめらかにする */
+            transition: background-color 0.15s; 
         }
 
-        /* ❗【新機能】エラー判定の時に画面全体（body）を真っ赤にするクラス */
-        body.mode-error {
-            background-color: #8c0000 !important;
-        }
+        body.mode-error { background-color: #8c0000 !important; }
 
-        /* 画面全体を包むコンテナ（1画面に綺麗に収める） */
+        /* 画面全体を包むコンテナ */
         .app-container {
             display: flex; flex-direction: column; width: 100%; height: 100%; padding: 8px; box-sizing: border-box;
             border: 6px solid #f0a842; transition: border-color 0.3s;
         }
         
-        /* 本番動作中になったら枠を「稼働中グリーン」に変化させる */
         body.mode-running .app-container { border-color: #238636 !important; }
-        
-        /* ❗エラーの時は外枠を消して赤を際立たせる */
         body.mode-error .app-container { border-color: transparent !important; }
 
         h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 4px 0; }
 
-        /* 📸 カメラのフレームサイズを端末画面の縦幅50%に強制ロック */
+        /* カメラのフレームサイズ（縦幅50%固定） */
         #canvas-container { 
             margin: 0 auto; width: 100%; max-width: 480px; 
-            height: 50vh; /* 端末画面の縦幅のちょうど半分に指定 */
+            height: 50vh; 
             max-height: 50vh;
             position: relative; cursor: pointer; border: 2px solid #30363d; border-radius: 8px; overflow: hidden; background-color: #000; box-sizing: border-box; 
             display: flex; justify-content: center; align-items: center;
         }
-        canvas { 
-            width: 100%; height: 100%; 
-            object-fit: cover !important; /* 映像を潰さずに枠内に綺麗に収める */
-        }
+        canvas { width: 100%; height: 100%; object-fit: cover !important; }
         .zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; pointer-events: none; color: #8b949e; }
         
         /* ライトボタン */
@@ -70,15 +61,12 @@
             background-color: rgba(35, 134, 54, 0.2) !important; color: #56d364 !important; border-color: #238636 !important;
             animation: pulse 1.5s infinite;
         }
-        /* ❗エラーの時は文字盤も赤熱化 */
         #modeIndicator.error-style {
             background-color: rgba(255, 0, 0, 0.4) !important; color: #fff !important; border-color: #ff0000 !important;
         }
-        @keyframes pulse {
-            0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; }
-        }
+        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
 
-        /* ボタン共通スタイル */
+        /* ボタンスタイル */
         .btn-large {
             display: block; width: 100%; max-width: 480px; margin: 6px auto;
             padding: 12px; font-size: 1.1em; font-weight: 700; border: none; border-radius: 8px; 
@@ -135,7 +123,6 @@
         .expected { color: #ffd33d; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; }
         .highlight { color: #56d364; font-weight: 700; font-size: 1.5em; font-family: monospace; line-height: 1; }
         
-        /* 47桁折り返し全表示設定 */
         .highlight-uni { 
             color: #79c0ff; font-weight: 700; font-size: 1.3em; font-family: monospace; 
             word-break: break-all; white-space: normal; max-width: 65%; text-align: right; line-height: 1.2;
@@ -272,8 +259,15 @@
             if (localStorage.getItem('orderDir')) {
                 orderDirSelect.value = localStorage.getItem('orderDir');
             }
-            clearErrorState();
+            
+            // ❗【最重要：バグ修正】立ち上げ時に「前の記憶」をボタンの見た目も含めて完全初期化する
             appState = 'SETUP'; 
+            lockButton.style.display = 'block'; 
+            resetSeqButton.style.display = 'none'; 
+            settingBox.style.display = 'block';
+            statusBadge.innerText = '抽出ルール設定中'; 
+            statusBadge.className = 'status-badge status-setup';
+            clearErrorState();
         });
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } })
@@ -529,7 +523,7 @@
             expectedElement.innerText = "連番待機中";
             
             appState = 'RUNNING_SEQ_WAIT'; 
-            clearErrorState(); // ❗リセット時も赤背景をクリアする
+            clearErrorState(); 
             modeIndicator.innerText = "🟡 基準連番の再スキャン待機中...";
             showMessage(`ユニークキー「${fixedUniqueKey}」を維持して連番をリセットしました。次の連番基準となるQRをかざしてください。`, "#58a6ff");
             playBeep('first');
@@ -542,7 +536,7 @@
         }
 
         function renderLogUI() {
-            if (scanLogs.length === 0) { logContainer.innerHTML = '<div class="empty-msg" style="text-align: center; margin-top: 10px;">記録はありません</div>'; return; }
+            if (scanLogs.length === 0) { logContainer.innerHTML = '<div class="empty-msg" style="text-align: center; margin-top: 5px;">記録はありません</div>'; return; }
             logContainer.innerHTML = '';
             scanLogs.slice(-50).reverse().forEach(log => {
                 const div = document.createElement('div'); div.className = 'log-entry';
@@ -573,7 +567,6 @@
 
         function clearLogs() { if (confirm("履歴データをすべて消去しますか？")) { scanLogs = []; resetChecker(); renderLogUI(); } }
 
-        // ❗【新機能】エラー状態を完全にリセットして正常画面に戻す関数
         function clearErrorState() {
             document.body.classList.remove("mode-error");
             if (appState === 'RUNNING') {
@@ -582,12 +575,11 @@
             }
         }
 
-        // ❗【新機能】エラー発生時に背景を赤く染める関数
         function triggerErrorState(msgText) {
             document.body.classList.add("mode-error");
             modeIndicator.innerText = "🚨 エラー判定発生中 🚨";
             modeIndicator.className = "error-style";
-            showMessage(msgText, "#fff"); /* 文字を見やすく白に変更 */
+            showMessage(msgText, "#fff"); 
             playBeep('ng');
         }
 
@@ -617,6 +609,9 @@
                 expectedElement.innerText = TuneExpected(expectedNumber);
                 scannedSeqHistory.add(scannedNumber);
                 
+                modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
+                modeIndicator.className = "run-style";
+
                 showMessage("新連番登録：ユニーク一致＆正しい連番です。", "#56d364");
                 playBeep('first');
                 addLogEntry('FIRST', scannedNumber, uniKeyText, null);
@@ -628,21 +623,18 @@
 
             const dir = parseInt(orderDirSelect.value, 10);
 
-            // 1. ユニークキー違いエラー
             if (uniKeyText !== fixedUniqueKey) {
                 triggerErrorState(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`);
                 addLogEntry('WRONG_KEY', scannedNumber, uniKeyText, expectedNumber); return;
             }
 
-            // 2. 重複スキャンエラー
             if (scannedSeqHistory.has(scannedNumber)) {
                 triggerErrorState(`⚠️ 重複NG：この連番「${TuneExpected(scannedNumber)}」はスキャン済みです。`);
                 addLogEntry('DUP', scannedNumber, uniKeyText, expectedNumber); return;
             }
 
-            // 3. 連番の順序OK判定 or 順NGエラー
             if (scannedNumber === expectedNumber) {
-                clearErrorState(); /* 正常に読めたら赤背景を自動クリア */
+                clearErrorState(); 
                 showMessage(`✅ OK：ユニーク一致＆正しい連番です。`, "#56d364");
                 scannedSeqHistory.add(scannedNumber); addLogEntry('OK', scannedNumber, uniKeyText, expectedNumber);
                 expectedNumber = scannedNumber + dir; playBeep('ok');
@@ -653,7 +645,6 @@
             expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : "未登録";
         }
 
-        // ゼロパディング（桁揃え）を維持する補助関数
         function TuneExpected(num) {
             const lSeq = document.getElementById('seqLen').value;
             if (lSeq !== "" && !isNaN(lSeq) && num !== null) {
