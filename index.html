@@ -7,97 +7,140 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; 
-            text-align: center; 
-            background-color: #0d1117; 
-            color: #f0f6fc; 
+        html, body { 
             margin: 0; 
-            padding: 12px; 
-            /* 横ブレを防ぎ、縦スクロールを完全にスムーズに許可 */
-            overflow-x: hidden;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* 1画面に収めるため全体のスクロールを禁止 */
+            background-color: #0d1117; 
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; 
+            color: #f0f6fc; 
             -webkit-text-size-adjust: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 画面全体を包むコンテナ（上下に綺麗に等間隔配置） */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            /* 初期状態（設定モード）の時は、画面全体にオレンジの太い警戒枠をつける */
+            border: 6px solid #f0a842;
+            transition: border-color 0.3s;
         }
         
-        h2 { font-size: 1.5em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 10px 0 15px; }
+        /* 本番動作中になったら枠を「稼働中グリーン」に変化させる */
+        body.mode-running .app-container {
+            border-color: #238636 !important;
+        }
+        
+        h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 4px 0; }
 
-        /* ライブカメラエリア */
-        #canvas-container { margin: 0 auto; width: 100%; max-width: 480px; position: relative; cursor: pointer; }
-        canvas { width: 100%; border: 2px solid #30363d; border-radius: 8px; background-color: #000; box-sizing: border-box; }
-        .zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; pointer-events: none; color: #8b949e; }
+        /* 📸 【ここを修正！】元のコードのサイズ計算を壊さないよう、横幅基準でiPhoneにフィットさせる設定 */
+        #canvas-container { 
+            margin: 0 auto; 
+            width: 100%; 
+            max-width: 440px; /* iPhoneの画面幅に合わせて少しコンパクトに */
+            position: relative; 
+            cursor: pointer; 
+            background-color: #000;
+            box-sizing: border-box;
+        }
+        canvas { 
+            display: block;
+            width: 100%; 
+            height: auto; /* プログラム側が計算した縦横比をそのまま維持して潰さない */
+            border: 2px solid #30363d; 
+            border-radius: 8px; 
+            box-sizing: border-box;
+        }
+        .zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 4px 8px; border-radius: 4px; font-size: 0.75em; pointer-events: none; color: #8b949e; }
         
         /* ライトボタン */
         #torchButton {
             position: fixed; top: 12px; right: 12px; z-index: 100;
-            width: auto; padding: 10px 16px; font-size: 1em; font-weight: 600;
+            width: auto; padding: 8px 14px; font-size: 0.9em; font-weight: 600;
             background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
         .btn-torch-on { background-color: #ffc107 !important; color: #000 !important; border-color: #ffc107 !important; }
         
-        /* ボタン共通スタイル */
-        .btn-large {
-            display: block; width: 100%; max-width: 480px; margin: 12px auto 0;
-            padding: 16px; font-size: 1.25em; font-weight: 700; border: none; border-radius: 8px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent;
-            letter-spacing: 1px; transition: background-color 0.1s;
+        /* カメラ直下のアナウンス文字 */
+        #modeIndicator {
+            width: 100%; max-width: 440px; margin: 4px auto; padding: 6px; font-size: 0.95em; font-weight: 800;
+            background-color: rgba(240, 168, 66, 0.15); color: #f0a842; border: 1px solid #f0a842; border-radius: 6px;
+            box-sizing: border-box;
         }
-        /* 連番のみリセット（トッパンレッド） */
+        #modeIndicator.run-style {
+            background-color: rgba(35, 134, 54, 0.2) !important; color: #56d364 !important; border-color: #238636 !important;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; }
+        }
+
+        /* ボタン共通スタイル（1画面に収めるため少しスリムに調整） */
+        .btn-large {
+            display: block; width: 100%; max-width: 440px; margin: 4px auto;
+            padding: 12px; font-size: 1.1em; font-weight: 700; border: none; border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent;
+            letter-spacing: 1px; box-sizing: border-box;
+        }
         .btn-reset-seq { background-color: #E60012; color: #ffffff; }
         .btn-reset-seq:active { background-color: #b8000e; }
-        
-        /* 設定確定（トッパンブルー） */
         .btn-lock { background-color: #003A8C; color: #ffffff; }
         .btn-lock:active { background-color: #002663; }
 
-        /* パネルエリア */
-        .box { margin-top: 15px; padding: 16px; border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; text-align: left; box-sizing: border-box; }
-        .box-title { margin: 0 0 12px 0; font-size: 1.1em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 8px; letter-spacing: 0.5px; }
+        /* パネルエリア（iPhoneの縦幅に綺麗に収まるよう余白を少しスリムに） */
+        .box { width: 100%; max-width: 440px; margin: 2px auto; padding: 8px 12px; border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; text-align: left; box-sizing: border-box; }
+        .box-title { margin: 0 0 4px 0; font-size: 0.95em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 2px; letter-spacing: 0.5px; }
         
         /* ステータス表示 */
-        .status-badge { float: right; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 700; letter-spacing: 0; }
+        .status-badge { float: right; padding: 1px 6px; border-radius: 4px; font-size: 0.75em; font-weight: 700; }
         .status-setup { background-color: #f0a842; color: #000; }
         .status-run { background-color: #238636; color: #fff; }
 
         /* モード切替タブスタイル */
-        .mode-selector { margin-bottom: 15px; display: flex; background: #0d1117; padding: 4px; border-radius: 6px; border: 1px solid #30363d; }
-        .radio-label { flex: 1; text-align: center; font-size: 1em; font-weight: 600; cursor: pointer; padding: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
+        .mode-selector { margin-bottom: 6px; display: flex; background: #0d1117; padding: 2px; border-radius: 6px; border: 1px solid #30363d; }
+        .radio-label { flex: 1; text-align: center; font-size: 0.85em; font-weight: 600; cursor: pointer; padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
         .radio-label input { display: none; }
         .radio-label.active-seq { background: #238636; color: #fff; }
         .radio-label.active-uni { background: #1f6feb; color: #fff; }
         
         /* なぞり文字ブロック */
         #char-container { 
-            display: flex; flex-wrap: wrap; gap: 6px; background: #0d1117; padding: 12px; 
-            border-radius: 6px; min-height: 50px; touch-action: none; -webkit-user-select: none; user-select: none; border: 1px solid #30363d;
+            display: flex; flex-wrap: wrap; gap: 4px; background: #0d1117; padding: 6px; 
+            border-radius: 6px; min-height: 36px; touch-action: none; -webkit-user-select: none; user-select: none; border: 1px solid #30363d;
         }
         .char-box {
             display: inline-flex; align-items: center; justify-content: center;
-            width: 34px; height: 46px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
-            font-size: 1.3em; font-weight: 700; color: #c9d1d9; cursor: pointer; font-family: monospace;
+            width: 24px; height: 34px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
+            font-size: 1em; font-weight: 700; color: #c9d1d9; cursor: pointer; font-family: monospace;
         }
         .char-box.selected-seq { background: #238636; color: #fff; border-color: #2ea043; }
         .char-box.selected-uni { background: #1f6feb; color: #fff; border-color: #388bfd; }
-        .empty-msg { color: #8b949e; font-size: 0.95em; margin: auto; }
+        .empty-msg { color: #8b949e; font-size: 0.8em; margin: auto; }
         
-        .setting-row { margin-top: 15px; font-size: 1em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
-        .setting-row select { padding: 10px; font-size: 1em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+        .setting-row { margin-top: 6px; font-size: 0.85em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
+        .setting-row select { padding: 4px; font-size: 0.95em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
         
         /* データ数値表示 */
-        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 10px 0; padding: 6px 0; border-bottom: 1px solid #21262d; }
+        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0; padding: 2px 0; border-bottom: 1px solid #21262d; }
         .info-row:last-of-type { border-bottom: none; }
-        .info-label { font-size: 1em; color: #8b949e; white-space: nowrap; margin-right: 10px; }
+        .info-label { font-size: 0.9em; color: #8b949e; white-space: nowrap; margin-right: 10px; }
         
-        .expected { color: #ffd33d; font-weight: 700; font-size: 2.2em; font-family: monospace; line-height: 1; }
-        .highlight { color: #56d364; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; }
+        .expected { color: #ffd33d; font-weight: 700; font-size: 1.6em; font-family: monospace; line-height: 1; }
+        .highlight { color: #56d364; font-weight: 700; font-size: 1.4em; font-family: monospace; line-height: 1; }
         
-        /* 47桁が絶対に「...」で隠れず、綺麗に2行に折り返して全表示される設定 */
         .highlight-uni { 
             color: #79c0ff; 
             font-weight: 700; 
-            font-size: 1.5em; 
+            font-size: 1.2em; 
             font-family: monospace; 
             word-break: break-all; 
             white-space: normal; 
@@ -106,11 +149,11 @@
             line-height: 1.2;
         }
         
-        #message { font-size: 1.15em; font-weight: 600; margin-top: 15px; text-align: center; min-height: 1.5em; padding: 12px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.4; }
+        #message { font-size: 0.9em; font-weight: 600; margin-top: 4px; text-align: center; min-height: 1.2em; padding: 6px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.3; }
         
-        /* 履歴ログ */
-        #log-container { max-height: 180px; overflow-y: auto; background: #0d1117; border-radius: 6px; padding: 10px; margin-top: 10px; border: 1px solid #30363d; }
-        .log-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding: 8px 0; font-size: 0.95em; }
+        /* 履歴ログ（高さを抑えて綺麗に収める） */
+        #log-container { max-height: 70px; overflow-y: auto; background: #0d1117; border-radius: 6px; padding: 4px; margin-top: 4px; border: 1px solid #30363d; }
+        .log-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #21262d; padding: 4px 0; font-size: 0.8em; }
         .log-entry:last-child { border-bottom: none; }
         .log-time { color: #8b949e; font-family: monospace; }
         .log-ok { color: #56d364; font-weight: 700; }
@@ -120,19 +163,16 @@
         .log-first { color: #58a6ff; font-weight: 700; }
 
         /* 下部履歴ボタン */
-        .btn-group { display: flex; gap: 12px; margin-top: 15px; }
-        button.action-btn { flex: 1; padding: 14px; font-size: 1.1em; font-weight: 600; cursor: pointer; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
-        button.action-btn:active { background-color: #30363d; }
-        .btn-success { background-color: #238636; color: #ffffff; border-color: #2ea043; }
-        .btn-success:active { background-color: #2ea043; }
+        .btn-group { display: flex; gap: 6px; margin-top: 4px; }
+        button.action-btn { flex: 1; padding: 8px; font-size: 0.9em; font-weight: 600; cursor: pointer; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
         
-        /* 全リセットボタンのさらに下にiPhone用の余白を追加 */
-        .btn-all-clear { background-color: #161b22; color: #f85149; margin-top: 25px; margin-bottom: 40px; border: 1px dashed #f85149; font-size: 1.1em; font-weight: 600; }
-        .btn-all-clear:active { background-color: #f85149; color: #ffffff; }
+        /* 全リセットボタン */
+        .btn-all-clear { background-color: #161b22; color: #f85149; margin-top: 6px; margin-bottom: 2px; padding: 8px; font-size: 0.95em; font-weight: 600; border: 1px dashed #f85149; }
     </style>
 </head>
 <body>
 
+  <div class="app-container">
     <h2>QRコード連番チェッカー</h2>
     
     <button id="torchButton" onclick="toggleTorch()">ライト: OFF</button>
@@ -142,6 +182,8 @@
         <canvas id="canvas"></canvas>
         <div class="zoom-hint">タップで拡大</div>
     </div>
+
+    <div id="modeIndicator">🛑 抽出ルール設定中（検査は停止しています）</div>
 
     <button id="lockButton" class="btn-large btn-lock" onclick="lockSettings()">設定を確定して本番開始</button>
     <button id="resetSeqButton" class="btn-large btn-reset-seq" onclick="resetSeqOnly()" style="display:none;">連番のみリセット（ユニークキー維持）</button>
@@ -183,7 +225,7 @@
                     <option value="-1">降順 (-1)</option>
                 </select>
             </div>
-            <button onclick="clearSelection()" style="padding:10px 14px; font-size:0.95em; background-color: #21262d; color:#f85149; border:1px solid #30363d; border-radius:6px; cursor:pointer; font-weight:600;">設定クリア</button>
+            <button onclick="clearSelection()" style="padding:4px 10px; font-size:0.85em; background-color: #21262d; color:#f85149; border:1px solid #30363d; border-radius:6px; cursor:pointer; font-weight:600;">設定クリア</button>
         </div>
         <input type="hidden" id="seqStart"><input type="hidden" id="seqLen">
         <input type="hidden" id="uniStart"><input type="hidden" id="uniLen">
@@ -191,7 +233,7 @@
     
     <div class="box">
         <h3 class="box-title">履歴ログ</h3>
-        <div id="log-container"><div class="empty-msg" style="text-align: center; margin-top: 10px;">記録はありません</div></div>
+        <div id="log-container"><div class="empty-msg" style="text-align: center; margin-top: 5px;">記録はありません</div></div>
         <div class="btn-group">
             <button class="action-btn btn-success" onclick="downloadCSV()">CSVで保存</button>
             <button class="action-btn" onclick="clearLogs()">履歴消去</button>
@@ -199,6 +241,7 @@
     </div>
 
     <button id="allClearButton" class="btn-large btn-all-clear" onclick="allClear()">全てリセット（ロット終了・ルール再設定）</button>
+  </div>
 
     <script>
         const video = document.getElementById("video");
@@ -216,12 +259,13 @@
         const resetSeqButton = document.getElementById("resetSeqButton");
         const statusBadge = document.getElementById("statusBadge");
         const settingBox = document.getElementById("settingBox");
+        const modeIndicator = document.getElementById("modeIndicator");
 
         let expectedNumber = null, lastScannedText = null, lastScanTime = 0, isZoomed = false, scanLogs = [];
         let fixedUniqueKey = null;
         let scannedSeqHistory = new Set();
         let currentDragMode = 'seq'; 
-        let appState = 'SETUP'; // ⚙️立ち上げ時は必ず「設定モード」からスタートさせる
+        let appState = 'SETUP'; 
 
         // トレース復元処理
         window.addEventListener('load', () => {
@@ -236,7 +280,9 @@
             if (localStorage.getItem('orderDir')) {
                 orderDirSelect.value = localStorage.getItem('orderDir');
             }
-            // ⚙️iPhoneの古い記憶による自動スタート（RUNNING化）を完全にブロック
+            document.body.classList.remove("mode-running");
+            modeIndicator.innerText = "🛑 抽出ルール設定中（検査は停止しています）";
+            modeIndicator.className = "";
             appState = 'SETUP'; 
         });
 
@@ -340,7 +386,6 @@
         let isDragging = false, dragStartIdx = -1, dragEndIdx = -1;
         function switchDragMode(mode) { 
             currentDragMode = mode; 
-            // アクティブなタブの色を制御
             document.getElementById('labelSeq').className = 'radio-label' + (mode === 'seq' ? ' active-seq' : '');
             document.getElementById('labelUni').className = 'radio-label' + (mode === 'uni' ? ' active-uni' : '');
         }
@@ -476,13 +521,16 @@
             lockButton.style.display = 'none'; resetSeqButton.style.display = 'block'; settingBox.style.display = 'none'; 
             statusBadge.innerText = '本番動作中'; statusBadge.className = 'status-badge status-run';
 
-            showMessage(`確定登録：ユニークキー「${fixedUniqueKey}」/ 次の連番「${expectedNumber}」`, "#56d364");
+            document.body.classList.add("mode-running");
+            modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
+            modeIndicator.className = "run-style";
+
+            showMessage("確定登録完了：本番チェック中です。", "#56d364");
             playBeep('first');
             addLogEntry('FIRST', scannedNumber, fixedUniqueKey, null);
             lastScanTime = new Date().getTime(); 
         }
 
-        // 🟢 連番のみを部分リセット（ユニークキーとトレース位置はキープ）
         function resetSeqOnly() {
             expectedNumber = null;
             scannedSeqHistory.clear();
@@ -491,6 +539,7 @@
             expectedElement.innerText = "連番待機中";
             
             appState = 'RUNNING_SEQ_WAIT'; 
+            modeIndicator.innerText = "🟡 基準連番の再スキャン待機中...";
             showMessage(`ユニークキー「${fixedUniqueKey}」を維持して連番をリセットしました。次の連番基準となるQRをかざしてください。`, "#58a6ff");
             playBeep('first');
         }
@@ -502,7 +551,7 @@
         }
 
         function renderLogUI() {
-            if (scanLogs.length === 0) { logContainer.innerHTML = '<div class="empty-msg" style="text-align: center; margin-top: 10px;">記録はありません</div>'; return; }
+            if (scanLogs.length === 0) { logContainer.innerHTML = '<div class="empty-msg" style="text-align: center; margin-top: 5px;">記録はありません</div>'; return; }
             logContainer.innerHTML = '';
             scanLogs.slice(-50).reverse().forEach(log => {
                 const div = document.createElement('div'); div.className = 'log-entry';
@@ -543,7 +592,6 @@
 
             targetResultElement.innerText = targetText;
             
-            // 部分リセット後の新連番基準待機
             if (appState === 'RUNNING_SEQ_WAIT') {
                 const scannedNumber = parseInt(targetText, 10);
                 if (isNaN(scannedNumber)) { showMessage(`エラー：「${targetText}」は数字ではありません。`, "#f85149"); playBeep('ng'); return; }
@@ -559,7 +607,10 @@
                 expectedElement.innerText = expectedNumber;
                 scannedSeqHistory.add(scannedNumber);
                 
-                showMessage(`新連番登録：ユニーク「${fixedUniqueKey}」/ 連番「${scannedNumber}」`, "#56d364");
+                modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
+                modeIndicator.className = "run-style";
+
+                showMessage("新連番登録：ユニーク一致＆正しい連番です。", "#56d364");
                 playBeep('first');
                 addLogEntry('FIRST', scannedNumber, uniKeyText, null);
                 return;
@@ -601,11 +652,14 @@
             lockButton.style.display = 'block'; resetSeqButton.style.display = 'none'; settingBox.style.display = 'block';
             statusBadge.innerText = '抽出ルール設定中'; statusBadge.className = 'status-badge status-setup';
             
+            document.body.classList.remove("mode-running");
+            modeIndicator.innerText = "🛑 抽出ルール設定中（検査は停止しています）";
+            modeIndicator.className = "";
+
             showMessage("最初のQR（基準）を映して、連番とユニークキーの位置を設定してください。", "#f0f6fc");
             playBeep('first');
         }
 
-        // ⚠️ ロット終了（完全初期化）
         function allClear() {
             if (confirm("固定ユニークキーを含め、すべての状態を初期化します。よろしいですか？")) {
                 resetChecker();
