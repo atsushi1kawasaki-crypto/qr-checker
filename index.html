@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>QRコード連番＆ユニークキーチェッカー</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=final_v4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=perfect_fix_final_v5"></script>
     <style>
         /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
         html, body { 
@@ -21,7 +21,6 @@
 
         body.mode-error { background-color: #8c0000 !important; }
 
-        /* 画面全体を包むコンテナ */
         .app-container {
             width: 100%; max-width: 480px; margin: 0 auto; padding: 12px; box-sizing: border-box;
             border: 6px solid #f0a842; transition: border-color 0.3s;
@@ -31,31 +30,24 @@
         body.mode-running .app-container { border-color: #238636 !important; }
         body.mode-error .app-container { border-color: transparent !important; }
 
-        /* ヘッダー部分とバーガーボタン */
+        /* ❗バーガーメニュー完全復活 */
         .header-area {
             display: flex; justify-content: space-between; align-items: center; 
             width: 100%; margin-bottom: 8px; box-sizing: border-box;
         }
         h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 0; }
-        
         .menu-trigger {
             background: none; border: none; color: #58a6ff; font-size: 1.8em; cursor: pointer; padding: 0 6px; line-height: 1;
         }
 
-        /* カメラのフレームサイズ（縦幅固定） */
+        /* カメラ枠（フリーズ防止固定） */
         #canvas-container { 
-            margin: 0 auto 10px auto; width: 100%;
-            position: relative; cursor: pointer; background-color: #000; box-sizing: border-box; 
+            margin: 0 auto 10px auto; width: 100%; height: 230px !important;
+            position: relative; cursor: pointer; background-color: #000; border: 2px solid #30363d; border-radius: 8px; overflow: hidden; box-sizing: border-box; 
         }
-        canvas { 
-            width: 100%; 
-            height: 230px !important; 
-            object-fit: cover !important; 
-            border: 2px solid #30363d; border-radius: 8px; box-sizing: border-box;
-        }
+        canvas { width: 100%; height: 100% !important; object-fit: cover !important; }
         .zoom-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(13,17,23,0.8); border: 1px solid #30363d; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; pointer-events: none; color: #8b949e; }
         
-        /* ライトボタン */
         #torchButton {
             position: fixed; top: 12px; right: 50px; z-index: 100;
             width: auto; padding: 6px 12px; font-size: 0.85em; font-weight: 600;
@@ -63,30 +55,22 @@
         }
         .btn-torch-on { background-color: #ffc107 !important; color: #000 !important; border-color: #ffc107 !important; }
         
-        /* カメラ直下のアナウンス文字 */
         #modeIndicator {
             width: 100%; margin: 4px auto; padding: 8px; font-size: 0.95em; font-weight: 800;
-            background-color: rgba(240, 168, 66, 0.15); color: #f0a842; border: 1px solid #f0a842; border-radius: 6px;
-            box-sizing: border-box;
+            background-color: rgba(240, 168, 66, 0.15); color: #f0a842; border: 1px solid #f0a842; border-radius: 6px; box-sizing: border-box;
         }
         #modeIndicator.run-style { background-color: rgba(35, 134, 54, 0.2) !important; color: #56d364 !important; border-color: #238636 !important; }
         #modeIndicator.error-style { background-color: rgba(255, 0, 0, 0.4) !important; color: #fff !important; border-color: #ff0000 !important; }
 
-        /* ボタンスタイル */
         .btn-large {
-            display: block; width: 100%; margin: 8px auto;
-            padding: 16px; font-size: 1.25em; font-weight: 700; border: none; border-radius: 8px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent;
-            letter-spacing: 1px; box-sizing: border-box;
+            display: block; width: 100%; margin: 8px auto; padding: 16px; font-size: 1.25em; font-weight: 700; border: none; border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); cursor: pointer; -webkit-tap-highlight-color: transparent; letter-spacing: 1px; box-sizing: border-box;
         }
         .btn-reset-seq { background-color: #E60012; color: #ffffff; }
         .btn-lock { background-color: #003A8C; color: #ffffff; }
 
-        /* パネルエリア */
         .box { 
-            width: 100%; margin: 8px auto; padding: 12px 16px; 
-            border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; 
-            text-align: left; box-sizing: border-box;
+            width: 100%; margin: 8px auto; padding: 12px 16px; border: 1px solid #30363d; border-radius: 8px; background-color: #161b22; text-align: left; box-sizing: border-box;
         }
         .box-title { margin: 0 0 4px 0; font-size: 1.1em; font-weight: 600; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 4px; letter-spacing: 0.5px; }
         
@@ -95,27 +79,18 @@
         .status-run { background-color: #238636; color: #fff; }
 
         /* 抽出ルールの設定エリア */
-        .setting-ui-box {
-            border: 1px dashed #30363d; border-radius: 6px; padding: 8px; margin-bottom: 10px; background-color: #0d1117;
-        }
-
-        /* モード切替タブスタイル */
+        #settingUiBox { border: 1px dashed #30363d; border-radius: 6px; padding: 8px; margin-bottom: 10px; background-color: #0d1117; }
         .mode-selector { margin-bottom: 8px; display: flex; background: #0d1117; padding: 2px; border-radius: 6px; border: 1px solid #30363d; }
         .radio-label { flex: 1; text-align: center; font-size: 0.9em; font-weight: 600; cursor: pointer; padding: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
         .radio-label input { display: none; }
         .radio-label.active-seq { background: #238636; color: #fff; }
         .radio-label.active-uni { background: #1f6feb; color: #fff; }
         
-        /* なぞり文字ブロック */
         #char-container { 
-            display: flex; flex-wrap: wrap; gap: 4px; background: #0d1117; padding: 8px; 
-            border-radius: 6px; min-height: 40px; border: 1px solid #30363d;
-            touch-action: pan-x !important; 
-            -webkit-user-select: none; user-select: none;
+            display: flex; flex-wrap: wrap; gap: 4px; background: #0d1117; padding: 8px; border-radius: 6px; min-height: 40px; border: 1px solid #30363d; touch-action: pan-x !important; -webkit-user-select: none; user-select: none;
         }
         .char-box {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 28px; height: 38px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
+            display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 38px; background: #21262d; border: 1px solid #30363d; border-radius: 4px;
             font-size: 1.1em; font-weight: 700; color: #c9d1d9; cursor: pointer; font-family: monospace;
         }
         .char-box.selected-seq { background: #238636; color: #fff; border-color: #2ea043; }
@@ -125,27 +100,22 @@
         .setting-row { margin-top: 8px; font-size: 0.9em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
         .setting-row select { padding: 6px 10px; font-size: 1em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
         
-        /* データ数値表示 */
-        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 8px 0; padding: 4px 0; border-bottom: 1px solid #21262d; }
+        .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0; padding: 2px 0; border-bottom: 1px solid #21262d; }
         .info-row:last-of-type { border-bottom: none; }
         .info-label { font-size: 1em; color: #8b949e; white-space: nowrap; margin-right: 10px; }
         
         .expected { color: #ffd33d; font-weight: 700; font-size: 2.2em; font-family: monospace; line-height: 1; }
         .highlight { color: #56d364; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; }
-        .highlight-uni { 
-            color: #79c0ff; font-weight: 700; font-size: 1.4em; font-family: monospace; 
-            word-break: break-all; white-space: normal; max-width: 65%; text-align: right; line-height: 1.2;
-        }
+        .highlight-uni { color: #79c0ff; font-weight: 700; font-size: 1.4em; font-family: monospace; word-break: break-all; white-space: normal; max-width: 65%; text-align: right; line-height: 1.2; }
         
         #message { font-size: 1em; font-weight: 600; margin-top: 8px; text-align: center; min-height: 1.4em; padding: 10px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.4; }
         
-        /* バーガーメニュー */
+        /* ❗バーガーメニュー（ログ・全リセット格納庫）完全復活 */
         .slide-menu {
             position: fixed; top: 0; right: -100%; width: 85%; height: 100%;
             background-color: #161b22; border-left: 2px solid #30363d; z-index: 1000;
             box-shadow: -4px 0 15px rgba(0,0,0,0.5); padding: 16px; box-sizing: border-box;
-            display: flex; flex-direction: column; text-align: left;
-            transition: right 0.3s ease;
+            display: flex; flex-direction: column; text-align: left; transition: right 0.3s ease;
         }
         .slide-menu.open { right: 0; }
         .menu-close { background: none; border: none; color: #f85149; font-size: 1.2em; font-weight: bold; cursor: pointer; align-self: flex-end; margin-bottom: 12px; }
@@ -187,22 +157,24 @@
     <button id="resetSeqButton" class="btn-large btn-reset-seq" onclick="resetSeqOnly()" style="display:none;">連番のみリセット（ユニークキー維持）</button>
 
     <div class="box">
-        <div class="mode-selector" id="modeSelectorArea">
-            <label id="labelSeq" class="radio-label active-seq"><input type="radio" name="dragMode" value="seq" checked onchange="switchDragMode('seq')">連番設定</label>
-            <label id="labelUni" class="radio-label"><input type="radio" name="dragMode" value="uni" onchange="switchDragMode('uni')">ユニークキー設定</label>
-        </div>
-        
-        <div id="char-container" style="margin-bottom: 8px;"><span class="empty-msg">（まだQRを読んでいません）</span></div>
-
-        <div class="setting-row" id="orderDirRow">
-            <div>
-                順序: 
-                <select id="orderDir" onchange="updateDirection()">
-                    <option value="1">昇順 (+1)</option>
-                    <option value="-1">降順 (-1)</option>
-                </select>
+        <div id="settingUiBox">
+            <div class="mode-selector" id="modeSelectorArea">
+                <label id="labelSeq" class="radio-label active-seq"><input type="radio" name="dragMode" value="seq" checked onchange="switchDragMode('seq')">連番設定</label>
+                <label id="labelUni" class="radio-label"><input type="radio" name="dragMode" value="uni" onchange="switchDragMode('uni')">ユニークキー設定</label>
             </div>
-            <button onclick="clearSelection()" style="padding:4px 10px; font-size:0.85em; background-color: #21262d; color:#f85149; border:1px solid #30363d; border-radius:6px; cursor:pointer; font-weight:600;">設定クリア</button>
+            
+            <div id="char-container" style="margin-bottom: 8px;"><span class="empty-msg">（まだQRを読んでいません）</span></div>
+
+            <div class="setting-row" id="orderDirRow">
+                <div id="orderDirWrapper">
+                    順序: 
+                    <select id="orderDir" onchange="updateDirection()">
+                        <option value="1">昇順 (+1)</option>
+                        <option value="-1">降順 (-1)</option>
+                    </select>
+                </div>
+                <button id="clearBtn" onclick="clearSelection()" style="padding:6px 12px; font-size:0.9em; background-color: #21262d; color:#f85149; border:1px solid #30363d; border-radius:6px; cursor:pointer; font-weight:600;">設定クリア</button>
+            </div>
         </div>
 
         <h3 class="box-title">読み取り状況 <span id="statusBadge" class="status-badge status-setup">抽出ルール設定中</span></h3>
@@ -233,7 +205,7 @@
           <button class="action-btn" style="background-color: #238636; color: #fff;" onclick="downloadCSV()">CSVで保存</button>
           <button class="action-btn" onclick="clearLogs()">履歴消去</button>
       </div>
-      <button id="allClearButton" class="btn-all-clear" onclick="allClear()">全てリセット（ルール再設定）</button>
+      <button id="allClearButton" class="btn-all-clear" onclick="allClear()">全リセット（ロット終了・ルール再設定）</button>
   </div>
 
     <script>
@@ -244,6 +216,7 @@
         const messageElement = document.getElementById("message");
         const targetResultElement = document.getElementById("targetResult");
         const uniqueResultElement = document.getElementById("uniqueResult");
+        const defaultExpectedText = "未登録";
         const expectedElement = document.getElementById("expectedNumber");
         const charContainer = document.getElementById("char-container");
         const orderDirSelect = document.getElementById("orderDir");
@@ -287,7 +260,15 @@
             appState = 'SETUP'; 
             lockButton.style.display = 'block'; 
             resetSeqButton.style.display = 'none'; 
-            settingUiBox.style.display = 'block'; 
+            
+            // UI表示の初期化
+            document.getElementById('modeSelectorArea').style.display = 'flex';
+            charContainer.style.display = 'flex';
+            document.getElementById('orderDirWrapper').style.display = 'block';
+            settingUiBox.style.border = '1px dashed #30363d';
+            settingUiBox.style.padding = '8px';
+            settingUiBox.style.marginBottom = '10px';
+
             statusBadge.innerText = '抽出ルール設定中'; 
             statusBadge.className = 'status-badge status-setup';
             clearErrorState();
@@ -343,9 +324,7 @@
             canvas.lineWidth = 6; canvas.strokeStyle = color; canvas.stroke();
         }
         
-        const torchButton = document.getElementById("torchButton");
         let torchEnabled = false;
-
         function toggleTorch(e) {
             if(e) e.stopPropagation();
             if (!video.srcObject) return showMessage("カメラが起動していません。", "#f85149");
@@ -386,9 +365,7 @@
                     gain.gain.setValueAtTime(0.12, globalAudioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.00001, globalAudioCtx.currentTime + 0.4);
                     osc.start(); osc.stop(globalAudioCtx.currentTime + 0.4);
                 }
-            } catch (e) {
-                console.error("Audio Error:", e);
-            }
+            } catch (e) {}
         }
 
         let isDragging = false, dragStartIdx = -1, dragEndIdx = -1;
@@ -475,11 +452,26 @@
             });
         }
 
+        // ❗本番中（RUNNING）でも「設定クリア」を押せば全体リセットできるように機能を強化
         function clearSelection() {
-            if (appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') return;
+            if (appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') {
+                if (confirm("現在の本番設定をすべてクリアし、最初からやり直しますか？")) {
+                    resetChecker();
+                    showMessage("ルール設定をクリアしました。QRを映し直してください。", "#f0f6fc");
+                }
+                return;
+            }
+            
             document.getElementById('seqStart').value = ""; document.getElementById('seqLen').value = "";
             document.getElementById('uniStart').value = ""; document.getElementById('uniLen').value = "";
-            resetChecker(); showMessage("ルール設定をクリアしました。", "#f0f6fc");
+            
+            charContainer.innerHTML = '<span class="empty-msg">（まだQRを読んでいません）</span>';
+            charContainer.dataset.text = "";
+            targetResultElement.innerText = "-";
+            uniqueResultElement.innerText = "未登録";
+            lastScannedText = null;
+
+            showMessage("ルール設定をクリアしました。QRを映し直してください。", "#f0f6fc");
         }
 
         function updateDirection() { 
@@ -522,9 +514,16 @@
             expectedElement.innerText = TuneExpected(expectedNumber);
             scannedSeqHistory.add(scannedNumber);
 
-            lockButton.style.display = 'none'; resetSeqButton.style.display = 'block'; 
+            lockButton.style.display = 'none'; 
+            resetSeqButton.style.display = 'block'; 
             
-            settingUiBox.style.display = 'none';
+            // ❗本番開始時は、「なぞりブロック」と「順序選択」だけを隠し、「設定クリア」ボタンは確実に残す
+            document.getElementById('modeSelectorArea').style.display = 'none';
+            charContainer.style.display = 'none';
+            document.getElementById('orderDirWrapper').style.display = 'none';
+            settingUiBox.style.border = 'none';
+            settingUiBox.style.padding = '0';
+            settingUiBox.style.marginBottom = '0';
 
             statusBadge.innerText = '本番動作中'; statusBadge.className = 'status-badge status-run';
 
@@ -532,9 +531,10 @@
             modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
             modeIndicator.className = "run-style";
 
-            showMessage("確定登録完了：本番チェック中です。", "#56d364");
+            showMessage("確定登録完了：本番チェック中です。次のQRコードへ進んでください。", "#56d364");
             playBeep('first');
             addLogEntry('FIRST', scannedNumber, fixedUniqueKey, null);
+            
             lastScanTime = new Date().getTime(); 
         }
 
@@ -547,7 +547,7 @@
             
             appState = 'RUNNING_SEQ_WAIT'; 
             clearErrorState(); 
-            modeIndicator.innerText = "🟡 基準連番的再スキャン待機中...";
+            modeIndicator.innerText = "🟡 基準連番の再スキャン待機中...";
             showMessage(`ユニークキー「${fixedUniqueKey}」を維持して連番をリセットしました。次の連番基準となるQRをかざしてください。`, "#58a6ff");
             playBeep('first');
         }
@@ -598,14 +598,12 @@
             }
         }
 
-        // ❗【バイブ対応】エラー発生時に「ブブブ、ブブブ、ブブブ」と3回激しく振動させる機能
         function triggerErrorState(msgText) {
             document.body.classList.add("mode-error");
             modeIndicator.innerText = "🚨 エラー判定発生中 🚨";
             modeIndicator.className = "error-style";
             showMessage(msgText, "#fff"); 
             
-            // 🌟 振動パターン：[200ms震える, 100ms休む, 200ms震える, 100ms休む, 200ms震える]
             if (navigator.vibrate) {
                 navigator.vibrate([200, 100, 200, 100, 200]);
             }
@@ -672,7 +670,7 @@
                 triggerErrorState(`❌ 順NG：連番が違います。 (期待: ${TuneExpected(expectedNumber)})`);
                 addLogEntry('NG', scannedNumber, uniKeyText, expectedNumber);
             }
-            expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : "未登録";
+            expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : defaultExpectedText;
         }
 
         function TuneExpected(num) {
@@ -688,12 +686,20 @@
         function resetChecker() {
             appState = 'SETUP';
             expectedNumber = null; fixedUniqueKey = null; scannedSeqHistory.clear(); lastScannedText = null;
-            targetResultElement.innerText = "-"; uniqueResultElement.innerText = "未登録"; expectedElement.innerText = "未登録";
+            targetResultElement.innerText = "-"; uniqueResultElement.innerText = "未登録"; expectedElement.innerText = defaultExpectedText;
             charContainer.innerHTML = '<span class="empty-msg">（まだQRを読んでいません）</span>';
             charContainer.dataset.text = "";
             
-            lockButton.style.display = 'block'; resetSeqButton.style.display = 'none'; 
-            settingUiBox.style.display = 'block';
+            lockButton.style.display = 'block'; 
+            resetSeqButton.style.display = 'none'; 
+            
+            // ❗リセット時は、隠していたなぞり用UIをすべて確実に復活させる
+            document.getElementById('modeSelectorArea').style.display = 'flex';
+            charContainer.style.display = 'flex';
+            document.getElementById('orderDirWrapper').style.display = 'block';
+            settingUiBox.style.border = '1px dashed #30363d';
+            settingUiBox.style.padding = '8px';
+            settingUiBox.style.marginBottom = '10px';
 
             statusBadge.innerText = '抽出ルール設定中'; statusBadge.className = 'status-badge status-setup';
             
