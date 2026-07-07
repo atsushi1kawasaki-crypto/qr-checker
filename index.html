@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>QRコード連番＆ユニークキーチェッカー</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=perfect_fix_final_v5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=perfect_fix_final_v7"></script>
     <style>
         /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
         html, body { 
@@ -20,6 +20,8 @@
         }
 
         body.mode-error { background-color: #8c0000 !important; }
+        /* 🟢 OK時・初回登録時に画面を緑にするスタイル */
+        body.mode-success { background-color: #0f5323 !important; }
 
         .app-container {
             width: 100%; max-width: 480px; margin: 0 auto; padding: 12px; box-sizing: border-box;
@@ -29,8 +31,8 @@
         
         body.mode-running .app-container { border-color: #238636 !important; }
         body.mode-error .app-container { border-color: transparent !important; }
+        body.mode-success .app-container { border-color: transparent !important; }
 
-        /* ❗バーガーメニュー完全復活 */
         .header-area {
             display: flex; justify-content: space-between; align-items: center; 
             width: 100%; margin-bottom: 8px; box-sizing: border-box;
@@ -40,7 +42,6 @@
             background: none; border: none; color: #58a6ff; font-size: 1.8em; cursor: pointer; padding: 0 6px; line-height: 1;
         }
 
-        /* カメラ枠（フリーズ防止固定） */
         #canvas-container { 
             margin: 0 auto 10px auto; width: 100%; height: 230px !important;
             position: relative; cursor: pointer; background-color: #000; border: 2px solid #30363d; border-radius: 8px; overflow: hidden; box-sizing: border-box; 
@@ -78,7 +79,6 @@
         .status-setup { background-color: #f0a842; color: #000; }
         .status-run { background-color: #238636; color: #fff; }
 
-        /* 抽出ルールの設定エリア */
         #settingUiBox { border: 1px dashed #30363d; border-radius: 6px; padding: 8px; margin-bottom: 10px; background-color: #0d1117; }
         .mode-selector { margin-bottom: 8px; display: flex; background: #0d1117; padding: 2px; border-radius: 6px; border: 1px solid #30363d; }
         .radio-label { flex: 1; text-align: center; font-size: 0.9em; font-weight: 600; cursor: pointer; padding: 8px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #8b949e; }
@@ -110,7 +110,6 @@
         
         #message { font-size: 1em; font-weight: 600; margin-top: 8px; text-align: center; min-height: 1.4em; padding: 10px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.4; }
         
-        /* ❗バーガーメニュー（ログ・全リセット格納庫）完全復活 */
         .slide-menu {
             position: fixed; top: 0; right: -100%; width: 85%; height: 100%;
             background-color: #161b22; border-left: 2px solid #30363d; z-index: 1000;
@@ -157,7 +156,7 @@
     <button id="resetSeqButton" class="btn-large btn-reset-seq" onclick="resetSeqOnly()" style="display:none;">連番のみリセット（ユニークキー維持）</button>
 
     <div class="box">
-        <div id="settingUiBox">
+        <div class="setting-ui-box" id="settingUiBox">
             <div class="mode-selector" id="modeSelectorArea">
                 <label id="labelSeq" class="radio-label active-seq"><input type="radio" name="dragMode" value="seq" checked onchange="switchDragMode('seq')">連番設定</label>
                 <label id="labelUni" class="radio-label"><input type="radio" name="dragMode" value="uni" onchange="switchDragMode('uni')">ユニークキー設定</label>
@@ -243,6 +242,13 @@
             if (globalAudioCtx.state === 'suspended') {
                 globalAudioCtx.resume();
             }
+            const osc = globalAudioCtx.createOscillator();
+            const gain = globalAudioCtx.createGain();
+            gain.gain.value = 0;
+            osc.connect(gain);
+            gain.connect(globalAudioCtx.destination);
+            osc.start(0);
+            osc.stop(globalAudioCtx.currentTime + 0.1);
         }
 
         function toggleMenu(e) {
@@ -261,7 +267,6 @@
             lockButton.style.display = 'block'; 
             resetSeqButton.style.display = 'none'; 
             
-            // UI表示の初期化
             document.getElementById('modeSelectorArea').style.display = 'flex';
             charContainer.style.display = 'flex';
             document.getElementById('orderDirWrapper').style.display = 'block';
@@ -452,7 +457,6 @@
             });
         }
 
-        // ❗本番中（RUNNING）でも「設定クリア」を押せば全体リセットできるように機能を強化
         function clearSelection() {
             if (appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') {
                 if (confirm("現在の本番設定をすべてクリアし、最初からやり直しますか？")) {
@@ -492,6 +496,26 @@
             showMessage("【設定受付中】位置を決定したら、上の確定ボタンを押してください。", "#f0a842");
         }
 
+        function triggerSuccessState() {
+            document.body.classList.add("mode-success");
+            setTimeout(() => {
+                document.body.classList.remove("mode-success");
+            }, 400); 
+        }
+
+        function triggerErrorState(msgText) {
+            document.body.classList.add("mode-error");
+            modeIndicator.innerText = "🚨 エラー判定発生中 🚨";
+            modeIndicator.className = "error-style";
+            showMessage(msgText, "#fff"); 
+            
+            if (navigator.vibrate) {
+                navigator.vibrate([200, 100, 200, 100, 200]);
+            }
+            
+            playBeep('ng');
+        }
+
         function lockSettings() {
             if (!lastScannedText) { alert("まずは最初のQR（基準）を一度カメラに映してください。"); return; }
             
@@ -517,7 +541,6 @@
             lockButton.style.display = 'none'; 
             resetSeqButton.style.display = 'block'; 
             
-            // ❗本番開始時は、「なぞりブロック」と「順序選択」だけを隠し、「設定クリア」ボタンは確実に残す
             document.getElementById('modeSelectorArea').style.display = 'none';
             charContainer.style.display = 'none';
             document.getElementById('orderDirWrapper').style.display = 'none';
@@ -531,6 +554,9 @@
             modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
             modeIndicator.className = "run-style";
 
+            // 🟢 初回登録時にも緑のフラッシュを発動！
+            triggerSuccessState();
+            
             showMessage("確定登録完了：本番チェック中です。次のQRコードへ進んでください。", "#56d364");
             playBeep('first');
             addLogEntry('FIRST', scannedNumber, fixedUniqueKey, null);
@@ -598,19 +624,6 @@
             }
         }
 
-        function triggerErrorState(msgText) {
-            document.body.classList.add("mode-error");
-            modeIndicator.innerText = "🚨 エラー判定発生中 🚨";
-            modeIndicator.className = "error-style";
-            showMessage(msgText, "#fff"); 
-            
-            if (navigator.vibrate) {
-                navigator.vibrate([200, 100, 200, 100, 200]);
-            }
-            
-            playBeep('ng');
-        }
-
         function processScanResult(decodedText) {
             let targetText = decodedText, uniKeyText = decodedText;
             const sSeq = document.getElementById('seqStart').value, lSeq = document.getElementById('seqLen').value;
@@ -640,6 +653,9 @@
                 modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
                 modeIndicator.className = "run-style";
 
+                // 🟢 連番リセット後の再登録時にも緑のフラッシュを発動！
+                triggerSuccessState();
+
                 showMessage("新連番登録：ユニーク一致＆正しい連番です。", "#56d364");
                 playBeep('first');
                 addLogEntry('FIRST', scannedNumber, uniKeyText, null);
@@ -663,6 +679,7 @@
 
             if (scannedNumber === expectedNumber) {
                 clearErrorState(); 
+                triggerSuccessState(); 
                 showMessage(`✅ OK：ユニーク一致＆正しい連番です。`, "#56d364");
                 scannedSeqHistory.add(scannedNumber); addLogEntry('OK', scannedNumber, uniKeyText, expectedNumber);
                 expectedNumber = scannedNumber + dir; playBeep('ok');
@@ -693,7 +710,6 @@
             lockButton.style.display = 'block'; 
             resetSeqButton.style.display = 'none'; 
             
-            // ❗リセット時は、隠していたなぞり用UIをすべて確実に復活させる
             document.getElementById('modeSelectorArea').style.display = 'flex';
             charContainer.style.display = 'flex';
             document.getElementById('orderDirWrapper').style.display = 'block';
