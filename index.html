@@ -344,7 +344,6 @@
             }
         }
 
-        // CSV/TXTファイルのスマート読み込み（番号行厳密抽出版）
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -357,20 +356,17 @@
                 let parsedList = [];
                 let rawValidLines = 0;
 
-                // 生産管理番号フォーマット用の判定正規表現 (例: 7DA2K2X0003759 や 7DA2K2X0003778 - 7DA2K2X0003781)
                 const codeRegex = /^[A-Za-z0-9]+(\s*-\s*[A-Za-z0-9]+)?$/;
 
                 for (let line of lines) {
                     let trimmed = line.trim();
                     
-                    // 空行や正規表現に合致しないヘッダー/ログ行は完全に無視
                     if (!trimmed || !codeRegex.test(trimmed)) {
                         continue;
                     }
 
                     rawValidLines++;
 
-                    // ハイフン指定の展開
                     if (trimmed.includes('-')) {
                         const parts = trimmed.split(/-/).map(p => p.trim());
                         if (parts.length === 2 && parts[0] !== "" && parts[1] !== "") {
@@ -382,7 +378,6 @@
                         }
                     }
 
-                    // 通常の単一コード行
                     parsedList.push(trimmed);
                 }
                 
@@ -658,15 +653,34 @@
             playBeep('ng');
         }
 
-        function lockSettings() {
-            if (!lastScannedText) { alert("まずは最初のQR（基準）を一度カメラに映してください。"); return; }
-            
-            let targetText = lastScannedText, uniKeyText = lastScannedText;
+        // 抽出用ヘルパー：ユニークキーと連番を統合したキーを取得
+        function getExtractedKeys(decodedText) {
+            let targetText = decodedText, uniKeyText = decodedText;
             const sSeq = document.getElementById('seqStart').value, lSeq = document.getElementById('seqLen').value;
             const sUni = document.getElementById('uniStart').value, lUni = document.getElementById('uniLen').value;
 
-            if (sSeq !== "" && lSeq !== "") targetText = lastScannedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
-            if (sUni !== "" && lUni !== "") uniKeyText = lastScannedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
+            const hasSeq = (sSeq !== "" && lSeq !== "");
+            const hasUni = (sUni !== "" && lUni !== "");
+
+            if (hasSeq) targetText = decodedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
+            if (hasUni) uniKeyText = decodedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
+
+            // リスト照合モードでユニークキーと連番の両方が指定されている場合、結合コードを生成
+            let matchKey = targetText;
+            if (checkType === 'list' && hasSeq && hasUni) {
+                matchKey = uniKeyText + targetText;
+            }
+
+            return { targetText, uniKeyText, matchKey };
+        }
+
+        function lockSettings() {
+            if (!lastScannedText) { alert("まずは最初のQR（基準）を一度カメラに映してください。"); return; }
+            
+            const keys = getExtractedKeys(lastScannedText);
+            const targetText = keys.targetText;
+            const uniKeyText = keys.uniKeyText;
+            const matchKey = keys.matchKey;
 
             if (checkType === 'auto') {
                 const scannedNumber = parseInt(targetText, 10);
@@ -682,14 +696,14 @@
                     return;
                 }
                 
-                const idx = listData.indexOf(targetText);
+                const idx = listData.indexOf(matchKey);
                 if (idx === -1) {
-                    alert(`エラー：読取値「${targetText}」が読み込んだリスト内に存在しません。`);
+                    alert(`エラー：抽出したコード「${matchKey}」が読み込んだリスト内に存在しません。`);
                     return;
                 }
                 
                 listIndex = idx;
-                scannedSeqHistory.add(targetText);
+                scannedSeqHistory.add(matchKey);
                 
                 if (listIndex + 1 < listData.length) {
                     expectedNumber = listData[listIndex + 1];
@@ -728,7 +742,7 @@
             
             showMessage("確定登録完了：本番チェック中です。次のQRコードへ進んでください。", "#56d364");
             playBeep('first');
-            addLogEntry('FIRST', targetText, fixedUniqueKey, null);
+            addLogEntry('FIRST', matchKey, fixedUniqueKey, null);
             
             lastScanTime = new Date().getTime(); 
         }
@@ -800,19 +814,17 @@
         }
 
         function processScanResult(decodedText) {
-            let targetText = decodedText, uniKeyText = decodedText;
-            const sSeq = document.getElementById('seqStart').value, lSeq = document.getElementById('seqLen').value;
-            const sUni = document.getElementById('uniStart').value, lUni = document.getElementById('uniLen').value;
+            const keys = getExtractedKeys(decodedText);
+            const targetText = keys.targetText;
+            const uniKeyText = keys.uniKeyText;
+            const matchKey = keys.matchKey;
 
-            if (sSeq !== "" && lSeq !== "") targetText = decodedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
-            if (sUni !== "" && lUni !== "") uniKeyText = decodedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
-
-            targetResultElement.innerText = targetText;
+            targetResultElement.innerText = matchKey;
             
             if (appState === 'RUNNING_SEQ_WAIT') {
                 if (uniKeyText !== fixedUniqueKey) {
                     triggerErrorState(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`);
-                    addLogEntry('WRONG_KEY', targetText, uniKeyText, null); return;
+                    addLogEntry('WRONG_KEY', matchKey, uniKeyText, null); return;
                 }
 
                 if (checkType === 'auto') {
@@ -826,16 +838,16 @@
                     expectedElement.innerText = TuneExpected(expectedNumber);
                     scannedSeqHistory.add(scannedNumber);
                 } else {
-                    const idx = listData.indexOf(targetText);
+                    const idx = listData.indexOf(matchKey);
                     if (idx === -1) {
-                        triggerErrorState(`❌ リスト未登録の番号です: ${targetText}`);
-                        addLogEntry('NG', targetText, uniKeyText, "リスト外"); return;
+                        triggerErrorState(`❌ リスト未登録の番号です: ${matchKey}`);
+                        addLogEntry('NG', matchKey, uniKeyText, "リスト外"); return;
                     }
                     
                     appState = 'RUNNING';
                     clearErrorState();
                     listIndex = idx;
-                    scannedSeqHistory.add(targetText);
+                    scannedSeqHistory.add(matchKey);
                     
                     if (listIndex + 1 < listData.length) {
                         expectedNumber = listData[listIndex + 1];
@@ -854,20 +866,20 @@
                 triggerSuccessState();
                 showMessage("新基準登録：ユニーク一致＆正しい番号です。", "#56d364");
                 playBeep('first');
-                addLogEntry('FIRST', targetText, uniKeyText, null);
+                addLogEntry('FIRST', matchKey, uniKeyText, null);
                 return;
             }
 
             if (uniKeyText !== fixedUniqueKey) {
                 triggerErrorState(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`);
-                addLogEntry('WRONG_KEY', targetText, uniKeyText, expectedNumber); return;
+                addLogEntry('WRONG_KEY', matchKey, uniKeyText, expectedNumber); return;
             }
 
-            const compareKey = checkType === 'auto' ? parseInt(targetText, 10) : targetText;
+            const compareKey = checkType === 'auto' ? parseInt(targetText, 10) : matchKey;
             if (scannedSeqHistory.has(compareKey)) {
                 const dispText = checkType === 'auto' ? TuneExpected(compareKey) : compareKey;
                 triggerErrorState(`⚠️ 重複NG：この番号「${dispText}」はスキャン済みです。`);
-                addLogEntry('DUP', targetText, uniKeyText, expectedNumber); return;
+                addLogEntry('DUP', matchKey, uniKeyText, expectedNumber); return;
             }
 
             if (checkType === 'auto') {
@@ -881,22 +893,22 @@
                     triggerSuccessState(); 
                     showMessage(`✅ OK：ユニーク一致＆正しい連番です。`, "#56d364");
                     scannedSeqHistory.add(scannedNumber); 
-                    addLogEntry('OK', scannedNumber, uniKeyText, expectedNumber);
+                    addLogEntry('OK', matchKey, uniKeyText, expectedNumber);
                     expectedNumber = scannedNumber + dir; 
                     playBeep('ok');
                 } else {
                     triggerErrorState(`❌ 順NG：連番が違います。 (期待: ${TuneExpected(expectedNumber)})`);
-                    addLogEntry('NG', scannedNumber, uniKeyText, expectedNumber);
+                    addLogEntry('NG', matchKey, uniKeyText, expectedNumber);
                 }
                 expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : defaultExpectedText;
 
             } else {
-                if (targetText === expectedNumber) {
+                if (matchKey === expectedNumber) {
                     clearErrorState();
                     triggerSuccessState();
                     showMessage(`✅ OK：リスト順に一致しました。`, "#56d364");
-                    scannedSeqHistory.add(targetText);
-                    addLogEntry('OK', targetText, uniKeyText, expectedNumber);
+                    scannedSeqHistory.add(matchKey);
+                    addLogEntry('OK', matchKey, uniKeyText, expectedNumber);
                     
                     listIndex++;
                     if (listIndex + 1 < listData.length) {
@@ -907,7 +919,7 @@
                     playBeep('ok');
                 } else {
                     triggerErrorState(`❌ 順NG：リスト順が違います。 (期待: ${expectedNumber})`);
-                    addLogEntry('NG', targetText, uniKeyText, expectedNumber);
+                    addLogEntry('NG', matchKey, uniKeyText, expectedNumber);
                 }
                 expectedElement.innerText = expectedNumber;
             }
