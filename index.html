@@ -628,7 +628,9 @@
             if (sSeq !== "" && lSeq !== "") targetText = decodedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
             if (sUni !== "" && lUni !== "") uniKeyText = decodedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
 
-            targetResultElement.innerText = targetText;
+            // 表示上のスペースを除去したクリーンコード
+            const cleanTarget = targetText.replace(/\s+/g, '');
+            targetResultElement.innerText = cleanTarget;
             uniqueResultElement.innerText = uniKeyText;
             showMessage("【設定受付中】位置を決定したら、上の確定ボタンを押してください。", "#f0a842");
         }
@@ -653,7 +655,7 @@
             playBeep('ng');
         }
 
-        // 抽出用ヘルパー：ユニークキーと連番を統合したキーを取得
+        // 空白を全除去した照合用キーを取得する高度抽出関数
         function getExtractedKeys(decodedText) {
             let targetText = decodedText, uniKeyText = decodedText;
             const sSeq = document.getElementById('seqStart').value, lSeq = document.getElementById('seqLen').value;
@@ -665,13 +667,18 @@
             if (hasSeq) targetText = decodedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
             if (hasUni) uniKeyText = decodedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
 
-            // リスト照合モードでユニークキーと連番の両方が指定されている場合、結合コードを生成
-            let matchKey = targetText;
+            // 自動で内部のスペース（半角・全角・タブ）をすべて削除してクリーン化
+            let cleanTarget = targetText.replace(/\s+/g, '');
+            let cleanUni = uniKeyText.replace(/\s+/g, '');
+
+            let matchKey = cleanTarget;
+            
+            // ユニークと連番両方が設定されている場合は順番通りに合体
             if (checkType === 'list' && hasSeq && hasUni) {
-                matchKey = uniKeyText + targetText;
+                matchKey = cleanUni + cleanTarget;
             }
 
-            return { targetText, uniKeyText, matchKey };
+            return { targetText: cleanTarget, uniKeyText: cleanUni, matchKey: matchKey };
         }
 
         function lockSettings() {
