@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>QRコード連番＆ユニークキーチェッカー</title>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=perfect_fix_final_v7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=perfect_fix_final_v8"></script>
     <style>
         /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
         html, body { 
@@ -321,29 +321,96 @@
             slideMenu.classList.toggle("open");
         }
 
-        window.addEventListener('load', () => {
-            localStorage.clear();
-            document.getElementById('seqStart').value = "";
-            document.getElementById('seqLen').value = "";
-            document.getElementById('uniStart').value = "";
-            document.getElementById('uniLen').value = "";
-            
-            appState = 'SETUP'; 
-            lockButton.style.display = 'block'; 
-            resetSeqButton.style.display = 'none'; 
-            skipButton.style.display = 'none';
-            
-            document.getElementById('modeSelectorArea').style.display = 'flex';
-            charContainer.style.display = 'flex';
-            document.getElementById('orderDirWrapper').style.display = 'block';
-            document.getElementById('checkTypeSelectorArea').style.display = 'flex';
-            settingUiBox.style.border = '1px dashed #30363d';
-            settingUiBox.style.padding = '8px';
-            settingUiBox.style.marginBottom = '10px';
+        // --- セッション自動保存機能 ---
+        function saveSessionState() {
+            if (appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') {
+                const sessionData = {
+                    appState, checkType, listPattern, listData, listIndex,
+                    fixedUniqueKey, expectedNumber,
+                    scannedSeqHistory: Array.from(scannedSeqHistory),
+                    scanLogs,
+                    seqStart: document.getElementById('seqStart').value,
+                    seqLen: document.getElementById('seqLen').value,
+                    uniStart: document.getElementById('uniStart').value,
+                    uniLen: document.getElementById('uniLen').value
+                };
+                localStorage.setItem('qr_session', JSON.stringify(sessionData));
+            }
+        }
 
-            statusBadge.innerText = '抽出ルール設定中'; 
-            statusBadge.className = 'status-badge status-setup';
-            clearErrorState();
+        function restoreSessionState() {
+            const saved = localStorage.getItem('qr_session');
+            if (!saved) return false;
+            try {
+                const sessionData = JSON.parse(saved);
+                if (sessionData && sessionData.appState === 'RUNNING' && confirm("前回の作業中断データが見つかりました。\n続きから作業を再開しますか？")) {
+                    appState = sessionData.appState;
+                    checkType = sessionData.checkType;
+                    listPattern = sessionData.listPattern;
+                    listData = sessionData.listData || [];
+                    listIndex = sessionData.listIndex || -1;
+                    fixedUniqueKey = sessionData.fixedUniqueKey;
+                    expectedNumber = sessionData.expectedNumber;
+                    scannedSeqHistory = new Set(sessionData.scannedSeqHistory || []);
+                    scanLogs = sessionData.scanLogs || [];
+
+                    document.getElementById('seqStart').value = sessionData.seqStart || "";
+                    document.getElementById('seqLen').value = sessionData.seqLen || "";
+                    document.getElementById('uniStart').value = sessionData.uniStart || "";
+                    document.getElementById('uniLen').value = sessionData.uniLen || "";
+
+                    uniqueResultElement.innerText = fixedUniqueKey;
+                    expectedElement.innerText = expectedNumber || "-";
+
+                    lockButton.style.display = 'none'; 
+                    resetSeqButton.style.display = 'block'; 
+                    if (checkType === 'list' && listPattern === 'order') skipButton.style.display = 'block';
+
+                    document.getElementById('modeSelectorArea').style.display = 'none';
+                    document.getElementById('checkTypeSelectorArea').style.display = 'none';
+                    document.getElementById('fileArea').style.display = 'none';
+                    charContainer.style.display = 'none';
+                    document.getElementById('orderDirWrapper').style.display = 'none';
+                    settingUiBox.style.border = 'none';
+                    settingUiBox.style.padding = '0';
+                    settingUiBox.style.marginBottom = '0';
+
+                    statusBadge.innerText = '本番動作中'; statusBadge.className = 'status-badge status-run';
+                    document.body.classList.add("mode-running");
+                    modeIndicator.innerText = checkType === 'auto' 
+                        ? "🟢 ⚠️ 検査稼働中（自動連番・ユニークチェックON）"
+                        : `🟢 ⚠️ 検査稼働中（リスト照合[${listPattern==='order'?'直列':'ランダム'}]ON）`;
+                    modeIndicator.className = "run-style";
+
+                    renderLogUI();
+                    updateProgressUI();
+                    showMessage("前回の作業状態を復元しました。検査を継続してください。", "#56d364");
+                    return true;
+                }
+            } catch(e) {}
+            localStorage.removeItem('qr_session');
+            return false;
+        }
+
+        window.addEventListener('load', () => {
+            if (!restoreSessionState()) {
+                appState = 'SETUP'; 
+                lockButton.style.display = 'block'; 
+                resetSeqButton.style.display = 'none'; 
+                skipButton.style.display = 'none';
+                
+                document.getElementById('modeSelectorArea').style.display = 'flex';
+                charContainer.style.display = 'flex';
+                document.getElementById('orderDirWrapper').style.display = 'block';
+                document.getElementById('checkTypeSelectorArea').style.display = 'flex';
+                settingUiBox.style.border = '1px dashed #30363d';
+                settingUiBox.style.padding = '8px';
+                settingUiBox.style.marginBottom = '10px';
+
+                statusBadge.innerText = '抽出ルール設定中'; 
+                statusBadge.className = 'status-badge status-setup';
+                clearErrorState();
+            }
         });
 
         function switchCheckType(type) {
@@ -516,23 +583,43 @@
                     globalAudioCtx.resume();
                 }
                 
+                const now = globalAudioCtx.currentTime;
+
+                if (type === 'complete') {
+                    // 全件完了時のファンファーレ音（ド・ミ・ソ・ド）
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const osc = globalAudioCtx.createOscillator();
+                        const gain = globalAudioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        gain.gain.setValueAtTime(0.1, now + idx * 0.12);
+                        gain.gain.exponentialRampToValueAtTime(0.00001, now + idx * 0.12 + 0.25);
+                        osc.connect(gain);
+                        gain.connect(globalAudioCtx.destination);
+                        osc.start(now + idx * 0.12);
+                        osc.stop(now + idx * 0.12 + 0.25);
+                    });
+                    return;
+                }
+
                 const osc = globalAudioCtx.createOscillator(); 
                 const gain = globalAudioCtx.createGain();
                 osc.connect(gain); 
                 gain.connect(globalAudioCtx.destination);
                 
                 if (type === 'first') {
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, globalAudioCtx.currentTime);
-                    gain.gain.setValueAtTime(0.08, globalAudioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + 0.25);
-                    osc.start(); osc.stop(globalAudioCtx.currentTime + 0.25);
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(587.33, now);
+                    gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.25);
+                    osc.start(); osc.stop(now + 0.25);
                 } else if (type === 'ok') {
-                    osc.type = 'sine'; osc.frequency.setValueAtTime(880, globalAudioCtx.currentTime);
-                    gain.gain.setValueAtTime(0.08, globalAudioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.00001, globalAudioCtx.currentTime + 0.15);
-                    osc.start(); osc.stop(globalAudioCtx.currentTime + 0.15);
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(880, now);
+                    gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.15);
+                    osc.start(); osc.stop(now + 0.15);
                 } else if (type === 'ng') {
-                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, globalAudioCtx.currentTime);
-                    gain.gain.setValueAtTime(0.12, globalAudioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.00001, globalAudioCtx.currentTime + 0.4);
-                    osc.start(); osc.stop(globalAudioCtx.currentTime + 0.4);
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(180, now);
+                    gain.gain.setValueAtTime(0.12, now); gain.gain.linearRampToValueAtTime(0.00001, now + 0.4);
+                    osc.start(); osc.stop(now + 0.4);
                 }
             } catch (e) {}
         }
@@ -647,7 +734,6 @@
             showMessage("連番方向を変更しました（本番開始時に反映されます）。", "#58a6ff"); 
         }
 
-        // ユニークキー（青）と連番（緑）を取得。リスト照合モードで両方設定済みの場合は自動結合！
         function getExtractedKeys(decodedText) {
             let targetText = decodedText, uniKeyText = decodedText;
             const sSeq = document.getElementById('seqStart').value, lSeq = document.getElementById('seqLen').value;
@@ -661,7 +747,6 @@
 
             let matchKey = targetText;
             
-            // リスト照合時にユニーク(青)と連番(緑)の両方が選ばれていれば自動合体
             if (checkType === 'list' && hasSeq && hasUni) {
                 matchKey = uniKeyText + targetText;
             }
@@ -689,8 +774,9 @@
             modeIndicator.className = "error-style";
             showMessage(msgText, "#fff"); 
             
+            // NG発生時は長めの3連振動
             if (navigator.vibrate) {
-                navigator.vibrate([200, 100, 200, 100, 200]);
+                navigator.vibrate([300, 150, 300, 150, 400]);
             }
             
             playBeep('ng');
@@ -782,6 +868,7 @@
             showMessage("確定登録完了：本番チェック中です。次のQRコードへ進んでください。", "#56d364");
             playBeep('first');
             addLogEntry('FIRST', matchKey, fixedUniqueKey, null);
+            saveSessionState();
             
             lastScanTime = new Date().getTime(); 
         }
@@ -807,6 +894,7 @@
             
             showMessage(`⏭️ 「${skippedCode}」をスキップし、次の番号を設定しました。`, "#d97706");
             playBeep('first');
+            saveSessionState();
         }
 
         function resetSeqOnly() {
@@ -823,12 +911,14 @@
             modeIndicator.innerText = "🟡 基準連番の再スキャン待機中...";
             showMessage(`ユニークキー「${fixedUniqueKey}」を維持して連番をリセットしました。次の連番基準となるQRをかざしてください。`, "#58a6ff");
             playBeep('first');
+            saveSessionState();
         }
 
         function addLogEntry(status, extractedNum, uniKey, expectedNum) {
             const now = new Date(), timeStr = now.toLocaleTimeString('ja-JP', { hour12: false });
             scanLogs.push({ time: timeStr, status: status, extracted: extractedNum, uniKey: uniKey, expected: expectedNum });
             renderLogUI();
+            saveSessionState();
         }
 
         function renderLogUI() {
@@ -989,7 +1079,12 @@
                         } else {
                             expectedNumber = "全件完了";
                         }
-                        playBeep('ok');
+
+                        if (scannedSeqHistory.size === listData.length) {
+                            playBeep('complete'); // 全件完了ファンファーレ
+                        } else {
+                            playBeep('ok');
+                        }
                         checkCompletionAutoSave();
                     } else {
                         triggerErrorState(`❌ 順NG：リスト順が違います。 (期待: ${expectedNumber})`);
@@ -1003,7 +1098,12 @@
                         showMessage(`✅ OK：リスト一致（ランダム照合）`, "#56d364");
                         scannedSeqHistory.add(matchKey);
                         addLogEntry('OK', matchKey, uniKeyText, "順不同");
-                        playBeep('ok');
+
+                        if (scannedSeqHistory.size === listData.length) {
+                            playBeep('complete'); // 全件完了ファンファーレ
+                        } else {
+                            playBeep('ok');
+                        }
                         checkCompletionAutoSave();
                     } else {
                         triggerErrorState(`❌ NG：リストにない番号です (${matchKey})`);
@@ -1019,6 +1119,7 @@
                 setTimeout(() => {
                     alert(`🎉 全件（${listData.length}通）の照合が完了しました！ログを自動保存します。`);
                     downloadCSV();
+                    localStorage.removeItem('qr_session'); // 完了時にセッションクリア
                 }, 300);
             }
         }
@@ -1063,6 +1164,8 @@
             document.body.classList.remove("mode-running");
             clearErrorState();
             updateProgressUI();
+
+            localStorage.removeItem('qr_session'); // セッション破棄
 
             showMessage("最初のQR（基準）を映して、連番とユニークキーの位置を設定してください。", "#f0f6fc");
             playBeep('first');
