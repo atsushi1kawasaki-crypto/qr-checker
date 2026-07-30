@@ -20,7 +20,6 @@
         }
 
         body.mode-error { background-color: #8c0000 !important; }
-        /* 🟢 OK時・初回登録時に画面を緑にするスタイル */
         body.mode-success { background-color: #0f5323 !important; }
 
         .app-container {
@@ -97,15 +96,15 @@
         .char-box.selected-uni { background: #1f6feb; color: #fff; border-color: #388bfd; }
         .empty-msg { color: #8b949e; font-size: 0.9em; margin: auto; }
         
-        .setting-row { margin-top: 8px; font-size: 0.9em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; }
+        .setting-row { margin-top: 8px; font-size: 0.9em; color: #c9d1d9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
         .setting-row select { padding: 6px 10px; font-size: 1em; border-radius: 6px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
         
         .info-row { display: flex; justify-content: space-between; align-items: flex-start; margin: 4px 0; padding: 2px 0; border-bottom: 1px solid #21262d; }
         .info-row:last-of-type { border-bottom: none; }
         .info-label { font-size: 1em; color: #8b949e; white-space: nowrap; margin-right: 10px; }
         
-        .expected { color: #ffd33d; font-weight: 700; font-size: 2.2em; font-family: monospace; line-height: 1; }
-        .highlight { color: #56d364; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; }
+        .expected { color: #ffd33d; font-weight: 700; font-size: 2.2em; font-family: monospace; line-height: 1; word-break: break-all; }
+        .highlight { color: #56d364; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; word-break: break-all; }
         .highlight-uni { color: #79c0ff; font-weight: 700; font-size: 1.4em; font-family: monospace; word-break: break-all; white-space: normal; max-width: 65%; text-align: right; line-height: 1.2; }
         
         #message { font-size: 1em; font-weight: 600; margin-top: 8px; text-align: center; min-height: 1.4em; padding: 10px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.4; }
@@ -132,6 +131,34 @@
         .btn-group { display: flex; gap: 8px; margin-top: 8px; flex-shrink: 0; }
         button.action-btn { flex: 1; padding: 12px; font-size: 0.95em; font-weight: 600; cursor: pointer; background-color: #21262d; color: #c9d1d9; border: 1px solid #30363d; border-radius: 6px; }
         .btn-all-clear { background-color: #0d1117; color: #f85149; margin-top: 15px; padding: 12px; font-size: 1em; font-weight: 600; border: 1px dashed #f85149; border-radius: 6px; flex-shrink: 0; }
+
+        .file-input-wrapper {
+            background: #21262d;
+            border: 1px dashed #58a6ff;
+            border-radius: 6px;
+            padding: 8px;
+            margin-top: 6px;
+            text-align: center;
+        }
+        .file-input-wrapper input[type="file"] {
+            display: none;
+        }
+        .file-btn {
+            display: inline-block;
+            padding: 6px 12px;
+            font-size: 0.85em;
+            font-weight: 600;
+            background-color: #1f6feb;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .file-info {
+            font-size: 0.8em;
+            color: #8b949e;
+            margin-top: 4px;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -157,8 +184,23 @@
 
     <div class="box">
         <div class="setting-ui-box" id="settingUiBox">
+            <div class="mode-selector" id="checkTypeSelectorArea" style="margin-bottom: 8px; border-color: #58a6ff;">
+                <label id="labelAutoSeq" class="radio-label active-seq" style="font-size:0.85em;">
+                    <input type="radio" name="checkType" value="auto" checked onchange="switchCheckType('auto')">🔢 自動連番算術
+                </label>
+                <label id="labelListSeq" class="radio-label" style="font-size:0.85em;">
+                    <input type="radio" name="checkType" value="list" onchange="switchCheckType('list')">📄 リスト照合 (TXT/CSV)
+                </label>
+            </div>
+
+            <div id="fileArea" class="file-input-wrapper" style="display: none;">
+                <label class="file-btn" for="csvFileInput">📁 txt/csv ファイル選択</label>
+                <input type="file" id="csvFileInput" accept=".csv, .txt" onchange="handleFileSelect(event)">
+                <div id="fileInfo" class="file-info">未選択 (ヘッダー付きTXT/CSV対応)</div>
+            </div>
+
             <div class="mode-selector" id="modeSelectorArea">
-                <label id="labelSeq" class="radio-label active-seq"><input type="radio" name="dragMode" value="seq" checked onchange="switchDragMode('seq')">連番設定</label>
+                <label id="labelSeq" class="radio-label active-seq"><input type="radio" name="dragMode" value="seq" checked onchange="switchDragMode('seq')">連番・追跡キー設定</label>
                 <label id="labelUni" class="radio-label"><input type="radio" name="dragMode" value="uni" onchange="switchDragMode('uni')">ユニークキー設定</label>
             </div>
             
@@ -233,6 +275,10 @@
         let currentDragMode = 'seq'; 
         let appState = 'SETUP'; 
         
+        let checkType = 'auto'; 
+        let listData = [];      
+        let listIndex = -1;     
+        
         let globalAudioCtx = null;
 
         function initAudioOnUserGesture() {
@@ -270,6 +316,7 @@
             document.getElementById('modeSelectorArea').style.display = 'flex';
             charContainer.style.display = 'flex';
             document.getElementById('orderDirWrapper').style.display = 'block';
+            document.getElementById('checkTypeSelectorArea').style.display = 'flex';
             settingUiBox.style.border = '1px dashed #30363d';
             settingUiBox.style.padding = '8px';
             settingUiBox.style.marginBottom = '10px';
@@ -278,6 +325,101 @@
             statusBadge.className = 'status-badge status-setup';
             clearErrorState();
         });
+
+        function switchCheckType(type) {
+            if (appState === 'RUNNING' || appState === 'RUNNING_SEQ_WAIT') return;
+            checkType = type;
+            document.getElementById('labelAutoSeq').className = 'radio-label' + (type === 'auto' ? ' active-seq' : '');
+            document.getElementById('labelListSeq').className = 'radio-label' + (type === 'list' ? ' active-uni' : '');
+            
+            const fileArea = document.getElementById('fileArea');
+            const orderDirWrapper = document.getElementById('orderDirWrapper');
+            
+            if (type === 'list') {
+                fileArea.style.display = 'block';
+                orderDirWrapper.style.display = 'none'; 
+            } else {
+                fileArea.style.display = 'none';
+                orderDirWrapper.style.display = 'block';
+            }
+        }
+
+        // CSV/TXTファイルのスマート読み込み（番号行厳密抽出版）
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split(/\r\n|\n|\r/);
+                
+                let parsedList = [];
+                let rawValidLines = 0;
+
+                // 生産管理番号フォーマット用の判定正規表現 (例: 7DA2K2X0003759 や 7DA2K2X0003778 - 7DA2K2X0003781)
+                const codeRegex = /^[A-Za-z0-9]+(\s*-\s*[A-Za-z0-9]+)?$/;
+
+                for (let line of lines) {
+                    let trimmed = line.trim();
+                    
+                    // 空行や正規表現に合致しないヘッダー/ログ行は完全に無視
+                    if (!trimmed || !codeRegex.test(trimmed)) {
+                        continue;
+                    }
+
+                    rawValidLines++;
+
+                    // ハイフン指定の展開
+                    if (trimmed.includes('-')) {
+                        const parts = trimmed.split(/-/).map(p => p.trim());
+                        if (parts.length === 2 && parts[0] !== "" && parts[1] !== "") {
+                            const expanded = expandRange(parts[0], parts[1]);
+                            if (expanded.length > 0) {
+                                parsedList.push(...expanded);
+                                continue;
+                            }
+                        }
+                    }
+
+                    // 通常の単一コード行
+                    parsedList.push(trimmed);
+                }
+                
+                listData = parsedList;
+
+                if (listData.length === 0) {
+                    alert("ファイルから有効な番号データを抽出できませんでした。");
+                    document.getElementById('fileInfo').innerText = "未選択 (ヘッダー付きTXT/CSV対応)";
+                    return;
+                }
+
+                document.getElementById('fileInfo').innerText = `📄 ${file.name} (${rawValidLines}行 / ${listData.length}通 展開完了)`;
+                showMessage(`リスト読み込み完了: 全${listData.length}通を展開しました。`, "#56d364");
+            };
+            reader.readAsText(file);
+        }
+
+        function expandRange(startStr, endStr) {
+            const matchStart = startStr.match(/^(.*?)(\d+)$/);
+            const matchEnd = endStr.match(/^(.*?)(\d+)$/);
+
+            if (matchStart && matchEnd && matchStart[1] === matchEnd[1]) {
+                const prefix = matchStart[1];
+                const startNum = parseInt(matchStart[2], 10);
+                const endNum = parseInt(matchEnd[2], 10);
+                const numLen = matchStart[2].length; 
+
+                if (!isNaN(startNum) && !isNaN(endNum) && startNum <= endNum && (endNum - startNum) < 5000) {
+                    let result = [];
+                    for (let i = startNum; i <= endNum; i++) {
+                        result.push(prefix + String(i).padStart(numLen, '0'));
+                    }
+                    return result;
+                }
+            }
+            return [startStr]; 
+        }
 
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } })
             .then(stream => { video.srcObject = stream; video.play(); requestAnimationFrame(tick); })
@@ -526,22 +668,48 @@
             if (sSeq !== "" && lSeq !== "") targetText = lastScannedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
             if (sUni !== "" && lUni !== "") uniKeyText = lastScannedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
 
-            const scannedNumber = parseInt(targetText, 10);
-            if (isNaN(scannedNumber)) { alert(`エラー：選択された「${targetText}」は数字ではないため連番設定できません。`); return; }
+            if (checkType === 'auto') {
+                const scannedNumber = parseInt(targetText, 10);
+                if (isNaN(scannedNumber)) { alert(`エラー：選択された「${targetText}」は数字ではないため連番設定できません。`); return; }
+
+                const dir = parseInt(orderDirSelect.value, 10);
+                expectedNumber = scannedNumber + dir;
+                expectedElement.innerText = TuneExpected(expectedNumber);
+                scannedSeqHistory.add(scannedNumber);
+            } else {
+                if (listData.length === 0) {
+                    alert("エラー：照合用のTXT/CSVファイルが読み込まれていません。");
+                    return;
+                }
+                
+                const idx = listData.indexOf(targetText);
+                if (idx === -1) {
+                    alert(`エラー：読取値「${targetText}」が読み込んだリスト内に存在しません。`);
+                    return;
+                }
+                
+                listIndex = idx;
+                scannedSeqHistory.add(targetText);
+                
+                if (listIndex + 1 < listData.length) {
+                    expectedNumber = listData[listIndex + 1];
+                    expectedElement.innerText = expectedNumber;
+                } else {
+                    expectedNumber = "全件完了";
+                    expectedElement.innerText = "全件完了";
+                }
+            }
 
             appState = 'RUNNING';
             fixedUniqueKey = uniKeyText;
             uniqueResultElement.innerText = fixedUniqueKey;
-            
-            const dir = parseInt(orderDirSelect.value, 10);
-            expectedNumber = scannedNumber + dir;
-            expectedElement.innerText = TuneExpected(expectedNumber);
-            scannedSeqHistory.add(scannedNumber);
 
             lockButton.style.display = 'none'; 
             resetSeqButton.style.display = 'block'; 
             
             document.getElementById('modeSelectorArea').style.display = 'none';
+            document.getElementById('checkTypeSelectorArea').style.display = 'none';
+            document.getElementById('fileArea').style.display = 'none';
             charContainer.style.display = 'none';
             document.getElementById('orderDirWrapper').style.display = 'none';
             settingUiBox.style.border = 'none';
@@ -551,15 +719,16 @@
             statusBadge.innerText = '本番動作中'; statusBadge.className = 'status-badge status-run';
 
             document.body.classList.add("mode-running");
-            modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
+            modeIndicator.innerText = checkType === 'auto' 
+                ? "🟢 ⚠️ 検査稼働中（自動連番・ユニークチェックON）"
+                : "🟢 ⚠️ 検査稼働中（リスト照合・ユニークチェックON）";
             modeIndicator.className = "run-style";
 
-            // 🟢 初回登録時にも緑のフラッシュを発動！
             triggerSuccessState();
             
             showMessage("確定登録完了：本番チェック中です。次のQRコードへ進んでください。", "#56d364");
             playBeep('first');
-            addLogEntry('FIRST', scannedNumber, fixedUniqueKey, null);
+            addLogEntry('FIRST', targetText, fixedUniqueKey, null);
             
             lastScanTime = new Date().getTime(); 
         }
@@ -570,6 +739,7 @@
             lastScannedText = null;
             targetResultElement.innerText = "-";
             expectedElement.innerText = "連番待機中";
+            listIndex = -1;
             
             appState = 'RUNNING_SEQ_WAIT'; 
             clearErrorState(); 
@@ -590,22 +760,25 @@
             scanLogs.slice(-50).reverse().forEach(log => {
                 const div = document.createElement('div'); div.className = 'log-entry';
                 let statusHtml = '';
+                const expDisplay = log.expected !== null ? (checkType === 'auto' ? TuneExpected(log.expected) : log.expected) : '-';
+                const extDisplay = checkType === 'auto' ? TuneExpected(log.extracted) : log.extracted;
+
                 if (log.status === 'OK') statusHtml = '<span class="log-ok">OK</span>';
-                else if (log.status === 'NG') statusHtml = `<span class="log-ng">順NG (期待:${TuneExpected(log.expected)})</span>`;
+                else if (log.status === 'NG') statusHtml = `<span class="log-ng">順NG (期待:${expDisplay})</span>`;
                 else if (log.status === 'WRONG_KEY') statusHtml = `<span class="log-wrong-key">ユニーク違い</span>`;
                 else if (log.status === 'DUP') statusHtml = '<span class="log-dup">重複NG</span>';
                 else if (log.status === 'FIRST') statusHtml = '<span class="log-first">基準登録</span>';
-                div.innerHTML = `<span class="log-time">${log.time}</span><span style="flex: 1; text-align: center; font-family: monospace;">#${TuneExpected(log.extracted)} [${log.uniKey}]</span>${statusHtml}`;
+                div.innerHTML = `<span class="log-time">${log.time}</span><span style="flex: 1; text-align: center; font-family: monospace;">#${extDisplay} [${log.uniKey}]</span>${statusHtml}`;
                 logContainer.appendChild(div);
             });
         }
 
         function downloadCSV() {
             if (scanLogs.length === 0) { alert("保存するデータがありません。"); return; }
-            let csvContent = "\uFEFF時間,判定,抽出した連番,抽出したユニークキー,期待値\n";
+            let csvContent = "\uFEFF時間,判定,抽出した連番・番号,抽出したユニークキー,期待値\n";
             scanLogs.forEach(log => {
-                const expected = log.expected !== null ? TuneExpected(log.expected) : "-";
-                csvContent += `${log.time},${log.status},${log.extracted},"${log.uniKey}",${expected}\n`;
+                const expected = log.expected !== null ? (checkType === 'auto' ? TuneExpected(log.expected) : log.expected) : "-";
+                csvContent += `${log.time},${log.status},"${log.extracted}","${log.uniKey}","${expected}"\n`;
             });
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), url = URL.createObjectURL(blob), link = document.createElement("a");
             const now = new Date(), y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
@@ -619,7 +792,9 @@
         function clearErrorState() {
             document.body.classList.remove("mode-error");
             if (appState === 'RUNNING') {
-                modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
+                modeIndicator.innerText = checkType === 'auto' 
+                    ? "🟢 ⚠️ 検査稼働中（自動連番・ユニークチェックON）"
+                    : "🟢 ⚠️ 検査稼働中（リスト照合・ユニークチェックON）";
                 modeIndicator.className = "run-style";
             }
         }
@@ -635,64 +810,112 @@
             targetResultElement.innerText = targetText;
             
             if (appState === 'RUNNING_SEQ_WAIT') {
-                const scannedNumber = parseInt(targetText, 10);
-                if (isNaN(scannedNumber)) { triggerErrorState(`エラー：「${targetText}」は数字ではありません。`); return; }
-                
                 if (uniKeyText !== fixedUniqueKey) {
                     triggerErrorState(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`);
-                    addLogEntry('WRONG_KEY', scannedNumber, uniKeyText, null); return;
+                    addLogEntry('WRONG_KEY', targetText, uniKeyText, null); return;
+                }
+
+                if (checkType === 'auto') {
+                    const scannedNumber = parseInt(targetText, 10);
+                    if (isNaN(scannedNumber)) { triggerErrorState(`エラー：「${targetText}」は数字ではありません。`); return; }
+                    
+                    appState = 'RUNNING';
+                    clearErrorState();
+                    const dir = parseInt(orderDirSelect.value, 10);
+                    expectedNumber = scannedNumber + dir;
+                    expectedElement.innerText = TuneExpected(expectedNumber);
+                    scannedSeqHistory.add(scannedNumber);
+                } else {
+                    const idx = listData.indexOf(targetText);
+                    if (idx === -1) {
+                        triggerErrorState(`❌ リスト未登録の番号です: ${targetText}`);
+                        addLogEntry('NG', targetText, uniKeyText, "リスト外"); return;
+                    }
+                    
+                    appState = 'RUNNING';
+                    clearErrorState();
+                    listIndex = idx;
+                    scannedSeqHistory.add(targetText);
+                    
+                    if (listIndex + 1 < listData.length) {
+                        expectedNumber = listData[listIndex + 1];
+                        expectedElement.innerText = expectedNumber;
+                    } else {
+                        expectedNumber = "全件完了";
+                        expectedElement.innerText = "全件完了";
+                    }
                 }
                 
-                appState = 'RUNNING';
-                clearErrorState();
-                const dir = parseInt(orderDirSelect.value, 10);
-                expectedNumber = scannedNumber + dir;
-                expectedElement.innerText = TuneExpected(expectedNumber);
-                scannedSeqHistory.add(scannedNumber);
-                
-                modeIndicator.innerText = "🟢 ⚠️ 検査稼働中（連番・ユニークチェックON）";
+                modeIndicator.innerText = checkType === 'auto' 
+                    ? "🟢 ⚠️ 検査稼働中（自動連番・ユニークチェックON）"
+                    : "🟢 ⚠️ 検査稼働中（リスト照合・ユニークチェックON）";
                 modeIndicator.className = "run-style";
 
-                // 🟢 連番リセット後の再登録時にも緑のフラッシュを発動！
                 triggerSuccessState();
-
-                showMessage("新連番登録：ユニーク一致＆正しい連番です。", "#56d364");
+                showMessage("新基準登録：ユニーク一致＆正しい番号です。", "#56d364");
                 playBeep('first');
-                addLogEntry('FIRST', scannedNumber, uniKeyText, null);
+                addLogEntry('FIRST', targetText, uniKeyText, null);
                 return;
             }
 
-            const scannedNumber = parseInt(targetText, 10);
-            if (isNaN(scannedNumber)) { triggerErrorState(`エラー：「${targetText}」は数字ではありません。`); return; }
-
-            const dir = parseInt(orderDirSelect.value, 10);
-
             if (uniKeyText !== fixedUniqueKey) {
                 triggerErrorState(`❌ ユニークキー不一致 (固定: ${fixedUniqueKey} / 今回: ${uniKeyText})`);
-                addLogEntry('WRONG_KEY', scannedNumber, uniKeyText, expectedNumber); return;
+                addLogEntry('WRONG_KEY', targetText, uniKeyText, expectedNumber); return;
             }
 
-            if (scannedSeqHistory.has(scannedNumber)) {
-                triggerErrorState(`⚠️ 重複NG：この連番「${TuneExpected(scannedNumber)}」はスキャン済みです。`);
-                addLogEntry('DUP', scannedNumber, uniKeyText, expectedNumber); return;
+            const compareKey = checkType === 'auto' ? parseInt(targetText, 10) : targetText;
+            if (scannedSeqHistory.has(compareKey)) {
+                const dispText = checkType === 'auto' ? TuneExpected(compareKey) : compareKey;
+                triggerErrorState(`⚠️ 重複NG：この番号「${dispText}」はスキャン済みです。`);
+                addLogEntry('DUP', targetText, uniKeyText, expectedNumber); return;
             }
 
-            if (scannedNumber === expectedNumber) {
-                clearErrorState(); 
-                triggerSuccessState(); 
-                showMessage(`✅ OK：ユニーク一致＆正しい連番です。`, "#56d364");
-                scannedSeqHistory.add(scannedNumber); addLogEntry('OK', scannedNumber, uniKeyText, expectedNumber);
-                expectedNumber = scannedNumber + dir; playBeep('ok');
+            if (checkType === 'auto') {
+                const scannedNumber = parseInt(targetText, 10);
+                if (isNaN(scannedNumber)) { triggerErrorState(`エラー：「${targetText}」は数字ではありません。`); return; }
+
+                const dir = parseInt(orderDirSelect.value, 10);
+
+                if (scannedNumber === expectedNumber) {
+                    clearErrorState(); 
+                    triggerSuccessState(); 
+                    showMessage(`✅ OK：ユニーク一致＆正しい連番です。`, "#56d364");
+                    scannedSeqHistory.add(scannedNumber); 
+                    addLogEntry('OK', scannedNumber, uniKeyText, expectedNumber);
+                    expectedNumber = scannedNumber + dir; 
+                    playBeep('ok');
+                } else {
+                    triggerErrorState(`❌ 順NG：連番が違います。 (期待: ${TuneExpected(expectedNumber)})`);
+                    addLogEntry('NG', scannedNumber, uniKeyText, expectedNumber);
+                }
+                expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : defaultExpectedText;
+
             } else {
-                triggerErrorState(`❌ 順NG：連番が違います。 (期待: ${TuneExpected(expectedNumber)})`);
-                addLogEntry('NG', scannedNumber, uniKeyText, expectedNumber);
+                if (targetText === expectedNumber) {
+                    clearErrorState();
+                    triggerSuccessState();
+                    showMessage(`✅ OK：リスト順に一致しました。`, "#56d364");
+                    scannedSeqHistory.add(targetText);
+                    addLogEntry('OK', targetText, uniKeyText, expectedNumber);
+                    
+                    listIndex++;
+                    if (listIndex + 1 < listData.length) {
+                        expectedNumber = listData[listIndex + 1];
+                    } else {
+                        expectedNumber = "全件完了";
+                    }
+                    playBeep('ok');
+                } else {
+                    triggerErrorState(`❌ 順NG：リスト順が違います。 (期待: ${expectedNumber})`);
+                    addLogEntry('NG', targetText, uniKeyText, expectedNumber);
+                }
+                expectedElement.innerText = expectedNumber;
             }
-            expectedElement.innerText = expectedNumber !== null ? TuneExpected(expectedNumber) : defaultExpectedText;
         }
 
         function TuneExpected(num) {
             const lSeq = document.getElementById('seqLen').value;
-            if (lSeq !== "" && !isNaN(lSeq) && num !== null) {
+            if (lSeq !== "" && !isNaN(lSeq) && num !== null && !isNaN(num)) {
                 return String(num).padStart(parseInt(lSeq, 10), '0');
             }
             return num;
@@ -703,6 +926,7 @@
         function resetChecker() {
             appState = 'SETUP';
             expectedNumber = null; fixedUniqueKey = null; scannedSeqHistory.clear(); lastScannedText = null;
+            listIndex = -1;
             targetResultElement.innerText = "-"; uniqueResultElement.innerText = "未登録"; expectedElement.innerText = defaultExpectedText;
             charContainer.innerHTML = '<span class="empty-msg">（まだQRを読んでいません）</span>';
             charContainer.dataset.text = "";
@@ -711,8 +935,14 @@
             resetSeqButton.style.display = 'none'; 
             
             document.getElementById('modeSelectorArea').style.display = 'flex';
+            document.getElementById('checkTypeSelectorArea').style.display = 'flex';
+            if (checkType === 'list') {
+                document.getElementById('fileArea').style.display = 'block';
+            }
             charContainer.style.display = 'flex';
-            document.getElementById('orderDirWrapper').style.display = 'block';
+            if (checkType === 'auto') {
+                document.getElementById('orderDirWrapper').style.display = 'block';
+            }
             settingUiBox.style.border = '1px dashed #30363d';
             settingUiBox.style.padding = '8px';
             settingUiBox.style.marginBottom = '10px';
