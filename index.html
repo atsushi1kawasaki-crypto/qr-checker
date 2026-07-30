@@ -107,7 +107,7 @@
         .highlight { color: #56d364; font-weight: 700; font-size: 1.8em; font-family: monospace; line-height: 1; word-break: break-all; }
         .highlight-uni { color: #79c0ff; font-weight: 700; font-size: 1.4em; font-family: monospace; word-break: break-all; white-space: normal; max-width: 65%; text-align: right; line-height: 1.2; }
         
-        #message { font-size: 0.9em; font-weight: 600; margin-top: 8px; text-align: left; min-height: 1.4em; padding: 10px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.4; word-break: break-all; }
+        #message { font-size: 1em; font-weight: 600; margin-top: 8px; text-align: center; min-height: 1.4em; padding: 10px; border-radius: 6px; background: #21262d; border: 1px solid #30363d; line-height: 1.4; }
         
         .slide-menu {
             position: fixed; top: 0; right: -100%; width: 85%; height: 100%;
@@ -378,8 +378,7 @@
                         }
                     }
 
-                    // 不可視制御文字などを完全に削除してクリーン化
-                    parsedList.push(trimmed.replace(/[\u0000-\u001F\u007F-\u009F]/g, ""));
+                    parsedList.push(trimmed);
                 }
                 
                 listData = parsedList;
@@ -621,45 +620,19 @@
             showMessage("連番方向を変更しました（本番開始時に反映されます）。", "#58a6ff"); 
         }
 
-        function getExtractedKeys(decodedText) {
+        function processSetupResult(decodedText) {
             let targetText = decodedText, uniKeyText = decodedText;
             const sSeq = document.getElementById('seqStart').value, lSeq = document.getElementById('seqLen').value;
             const sUni = document.getElementById('uniStart').value, lUni = document.getElementById('uniLen').value;
 
-            const hasSeq = (sSeq !== "" && lSeq !== "");
-            const hasUni = (sUni !== "" && lUni !== "");
+            if (sSeq !== "" && lSeq !== "") targetText = decodedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
+            if (sUni !== "" && lUni !== "") uniKeyText = decodedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
 
-            if (hasSeq) targetText = decodedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
-            if (hasUni) uniKeyText = decodedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
-
-            // すべての空白記号を取り除く
-            let cleanTarget = targetText.replace(/\s+/g, '');
-            let cleanUni = uniKeyText.replace(/\s+/g, '');
-
-            let matchKey = cleanTarget;
-            if (checkType === 'list' && hasSeq && hasUni) {
-                matchKey = cleanUni + cleanTarget;
-            }
-
-            return { targetText: cleanTarget, uniKeyText: cleanUni, matchKey: matchKey, rawTarget: targetText };
-        }
-
-        function processSetupResult(decodedText) {
-            const keys = getExtractedKeys(decodedText);
-            targetResultElement.innerText = keys.matchKey;
-            uniqueResultElement.innerText = keys.uniKeyText;
-
-            let debugMsg = `【抽出状況デバッグ】\n`;
-            debugMsg += `・抽出結果: "${keys.matchKey}" (文字数: ${keys.matchKey.length})\n`;
-            if (listData.length > 0) {
-                debugMsg += `・リスト先頭データ: "${listData[0]}" (文字数: ${listData[0].length})\n`;
-                const foundIdx = listData.indexOf(keys.matchKey);
-                debugMsg += `・リスト一致判定: ${foundIdx !== -1 ? `✅ ${foundIdx + 1}件目に一致！` : `❌ リスト内になし`}`;
-            } else {
-                debugMsg += `・リスト状態: TXTファイル未選択`;
-            }
-
-            showMessage(debugMsg, "#f0a842");
+            // 表示上のスペースを除去したクリーンコード
+            const cleanTarget = targetText.replace(/\s+/g, '');
+            targetResultElement.innerText = cleanTarget;
+            uniqueResultElement.innerText = uniKeyText;
+            showMessage("【設定受付中】位置を決定したら、上の確定ボタンを押してください。", "#f0a842");
         }
 
         function triggerSuccessState() {
@@ -680,6 +653,32 @@
             }
             
             playBeep('ng');
+        }
+
+        // 空白を全除去した照合用キーを取得する高度抽出関数
+        function getExtractedKeys(decodedText) {
+            let targetText = decodedText, uniKeyText = decodedText;
+            const sSeq = document.getElementById('seqStart').value, lSeq = document.getElementById('seqLen').value;
+            const sUni = document.getElementById('uniStart').value, lUni = document.getElementById('uniLen').value;
+
+            const hasSeq = (sSeq !== "" && lSeq !== "");
+            const hasUni = (sUni !== "" && lUni !== "");
+
+            if (hasSeq) targetText = decodedText.substring(parseInt(sSeq, 10) - 1, parseInt(sSeq, 10) - 1 + parseInt(lSeq, 10));
+            if (hasUni) uniKeyText = decodedText.substring(parseInt(sUni, 10) - 1, parseInt(sUni, 10) - 1 + parseInt(lUni, 10));
+
+            // 自動で内部のスペース（半角・全角・タブ）をすべて削除してクリーン化
+            let cleanTarget = targetText.replace(/\s+/g, '');
+            let cleanUni = uniKeyText.replace(/\s+/g, '');
+
+            let matchKey = cleanTarget;
+            
+            // ユニークと連番両方が設定されている場合は順番通りに合体
+            if (checkType === 'list' && hasSeq && hasUni) {
+                matchKey = cleanUni + cleanTarget;
+            }
+
+            return { targetText: cleanTarget, uniKeyText: cleanUni, matchKey: matchKey };
         }
 
         function lockSettings() {
@@ -706,7 +705,7 @@
                 
                 const idx = listData.indexOf(matchKey);
                 if (idx === -1) {
-                    alert(`エラー：抽出コード「${matchKey}」がリスト内にありません。\nデバッグ情報メッセージを確認してください。`);
+                    alert(`エラー：抽出したコード「${matchKey}」が読み込んだリスト内に存在しません。`);
                     return;
                 }
                 
@@ -802,11 +801,11 @@
                 const expected = log.expected !== null ? (checkType === 'auto' ? TuneExpected(log.expected) : log.expected) : "-";
                 csvContent += `${log.time},${log.status},"${log.extracted}","${log.uniKey}","${expected}"\n`;
             });
-            const blob = new Blob magic = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })), link = document.createElement("a");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), url = URL.createObjectURL(blob), link = document.createElement("a");
             const now = new Date(), y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
             const h = String(now.getHours()).padStart(2, '0'), min = String(now.getMinutes()).padStart(2, '0');
-            link.setAttribute("href", blob); link.setAttribute("download", `QR管理ログ_${y}${m}${d}_${h}${min}.csv`);
-            document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(blob);
+            link.setAttribute("href", url); link.setAttribute("download", `QR管理ログ_${y}${m}${d}_${h}${min}.csv`);
+            document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
         }
 
         function clearLogs() { if (confirm("履歴データをすべて消去しますか？")) { scanLogs = []; resetChecker(); renderLogUI(); } }
