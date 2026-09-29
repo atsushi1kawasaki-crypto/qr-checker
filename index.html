@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QRコード連番＆ユニークキーチェッカー v1.1</title>
+    <title>QRコード連番＆ユニークキーチェッカー v1.2</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=perfect_fix_final_v8"></script>
     <style>
         /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
@@ -169,7 +169,7 @@
 
   <div class="app-container" onclick="initAudioOnUserGesture()">
     <div class="header-area">
-        <h2>QRコード連番チェッカー <span class="version-text">v1.1</span></h2>
+        <h2>QRコード連番チェッカー <span class="version-text">v1.2</span></h2>
         <button class="menu-trigger" onclick="toggleMenu(event)">☰</button>
     </div>
     
@@ -200,8 +200,8 @@
 
             <div id="fileArea" class="file-input-wrapper" style="display: none;">
                 <label class="file-btn" for="csvFileInput">📁 txt/csv ファイル選択</label>
-                <!-- iPhone用: accept属性に text/plain, text/csv を追加 -->
-                <input type="file" id="csvFileInput" accept=".csv, .txt, text/plain, text/csv" onchange="handleFileSelect(event)">
+                <!-- iPhoneでの完全対応のため、accept属性（制限）を完全に削除しました -->
+                <input type="file" id="csvFileInput" onchange="handleFileSelect(event)">
                 <div id="fileInfo" class="file-info">未選択 (ヘッダー付きTXT/CSV対応)</div>
                 
                 <div class="mode-selector" style="margin-top: 8px;">
