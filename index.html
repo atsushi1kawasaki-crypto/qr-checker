@@ -455,6 +455,11 @@
                 for (let line of lines) {
                     let trimmed = line.trim();
                     
+                    // カンマが含まれている場合は、カンマより前（1列目）だけを抽出
+                    if (trimmed.includes(',')) {
+                        trimmed = trimmed.split(',')[0].trim();
+                    }
+                    
                     if (!trimmed || !codeRegex.test(trimmed)) {
                         continue;
                     }
@@ -532,20 +537,25 @@
 
                     if (code) {
                         if (code.data && code.data.trim().length > 0) {
-                            drawLine(code.location.topLeftCorner, code.location.topRightCorner, appState === 'SETUP' ? "#f0a842" : "#2ea043");
-                            drawLine(code.location.topRightCorner, code.location.bottomRightCorner, appState === 'SETUP' ? "#f0a842" : "#2ea043");
-                            drawLine(code.location.bottomRightCorner, code.location.bottomLeftCorner, appState === 'SETUP' ? "#f0a842" : "#2ea043");
-                            drawLine(code.location.bottomLeftCorner, code.location.topLeftCorner, appState === 'SETUP' ? "#f0a842" : "#2ea043");
+                            // 読み取ったデータからすべての空白文字（スペース）を削除
+                            const scannedString = code.data.replace(/\s+/g, '');
+                            
+                            if (scannedString.length > 0) {
+                                drawLine(code.location.topLeftCorner, code.location.topRightCorner, appState === 'SETUP' ? "#f0a842" : "#2ea043");
+                                drawLine(code.location.topRightCorner, code.location.bottomRightCorner, appState === 'SETUP' ? "#f0a842" : "#2ea043");
+                                drawLine(code.location.bottomRightCorner, code.location.bottomLeftCorner, appState === 'SETUP' ? "#f0a842" : "#2ea043");
+                                drawLine(code.location.bottomLeftCorner, code.location.topLeftCorner, appState === 'SETUP' ? "#f0a842" : "#2ea043");
 
-                            const now = new Date().getTime();
-                            if (code.data !== lastScannedText || now - lastScanTime > 2000) {
-                                if (appState === 'SETUP') {
-                                    lastScannedText = code.data;
-                                    renderCharBlocks(code.data);
-                                    processSetupResult(code.data);
-                                } else {
-                                    lastScannedText = code.data; lastScanTime = now;
-                                    processScanResult(code.data);
+                                const now = new Date().getTime();
+                                if (scannedString !== lastScannedText || now - lastScanTime > 2000) {
+                                    if (appState === 'SETUP') {
+                                        lastScannedText = scannedString;
+                                        renderCharBlocks(scannedString);
+                                        processSetupResult(scannedString);
+                                    } else {
+                                        lastScannedText = scannedString; lastScanTime = now;
+                                        processScanResult(scannedString);
+                                    }
                                 }
                             }
                         }
