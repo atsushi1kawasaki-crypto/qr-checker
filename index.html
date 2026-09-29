@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QRコード連番＆ユニークキーチェッカー</title>
+    <title>QRコード連番＆ユニークキーチェッカー v1.1</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js?v=perfect_fix_final_v8"></script>
     <style>
         /* TOPPANカラー定義: Blue(#003A8C) / Red(#E60012) */
@@ -36,7 +36,8 @@
             display: flex; justify-content: space-between; align-items: center; 
             width: 100%; margin-bottom: 8px; box-sizing: border-box;
         }
-        h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 0; }
+        h2 { font-size: 1.2em; font-weight: 700; letter-spacing: 1px; color: #f0f6fc; margin: 0; display: flex; align-items: baseline; gap: 6px; }
+        .version-text { font-size: 0.6em; color: #8b949e; font-weight: 500; font-family: monospace; }
         .menu-trigger {
             background: none; border: none; color: #58a6ff; font-size: 1.8em; cursor: pointer; padding: 0 6px; line-height: 1;
         }
@@ -168,7 +169,7 @@
 
   <div class="app-container" onclick="initAudioOnUserGesture()">
     <div class="header-area">
-        <h2>QRコード連番チェッカー</h2>
+        <h2>QRコード連番チェッカー <span class="version-text">v1.1</span></h2>
         <button class="menu-trigger" onclick="toggleMenu(event)">☰</button>
     </div>
     
